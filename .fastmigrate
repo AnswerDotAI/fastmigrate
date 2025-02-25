@@ -1,0 +1,3 @@
+[paths]
+db = data/database.db
+migrations = migrations

@@ -1,0 +1,14 @@
+README.md
+pyproject.toml
+fastmigrate/__init__.py
+fastmigrate/cli.py
+fastmigrate/core.py
+fastmigrate.egg-info/PKG-INFO
+fastmigrate.egg-info/SOURCES.txt
+fastmigrate.egg-info/dependency_links.txt
+fastmigrate.egg-info/entry_points.txt
+fastmigrate.egg-info/requires.txt
+fastmigrate.egg-info/top_level.txt
+tests/test_cli.py
+tests/test_core.py
+tests/test_migrations.py

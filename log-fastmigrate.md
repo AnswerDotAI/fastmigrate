@@ -1,0 +1,2 @@
+# Log FastMigrate work
+
