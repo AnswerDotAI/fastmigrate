@@ -1,9 +1,0 @@
-project:
-  output-dir: _docs
-
-website:
-  title: "fastmigrate"
-  site-url: "https://AnswerDotAI.github.io/fastmigrate"
-  description: "Database migrations for fastlite"
-  repo-branch: main
-  repo-url: "https://github.com/AnswerDotAI/fastmigrate"
