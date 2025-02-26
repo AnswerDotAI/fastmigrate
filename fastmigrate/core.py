@@ -302,10 +302,10 @@ def run_migrations(
         "total_time": 0
     }
     
-    # For dry-run mode, we don't need the database to exist
-    if dry_run:
-        # If database doesn't exist, we assume version 0
-        if not os.path.exists(db_path):
+    # Check if database file exists
+    if not os.path.exists(db_path):
+        if dry_run:
+            # For dry-run mode, we don't need the database to exist
             console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
             console.print("Assuming version 0 for dry-run mode")
             current_version = 0
@@ -336,9 +336,8 @@ def run_migrations(
                 console.print(f"  → Would apply migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
             
             return True
-    else:
-        # Check if database file exists
-        if not os.path.exists(db_path):
+        else:
+            # For regular runs, database file must exist
             console.print(f"[bold red]Error:[/bold red] Database file does not exist: {db_path}")
             console.print("The database file must exist before running migrations.")
             console.print("Use --dry-run to preview migrations without requiring the database file.")
