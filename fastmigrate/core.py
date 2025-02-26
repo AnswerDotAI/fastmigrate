@@ -6,8 +6,14 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import time
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
+
+from rich.console import Console
+
+# Initialize Rich console
+console = Console()
 
 
 def ensure_meta_table(conn: sqlite3.Connection) -> None:
@@ -207,14 +213,14 @@ def execute_sql_script(db_path: str, script_path: str) -> bool:
         
     except sqlite3.Error as e:
         # SQL error occurred
-        print(f"Error executing SQL script {script_path}:", file=sys.stderr)
-        print(f"  {e}", file=sys.stderr)
+        console.print(f"[bold red]Error[/bold red] executing SQL script {script_path}:")
+        console.print(f"  {e}", style="red")
         return False
     
     except Exception as e:
         # Handle other errors (file not found, etc.)
-        print(f"Error executing SQL script {script_path}:", file=sys.stderr)
-        print(f"  {e}", file=sys.stderr)
+        console.print(f"[bold red]Error[/bold red] executing SQL script {script_path}:")
+        console.print(f"  {e}", style="red")
         return False
         
     finally:
@@ -232,8 +238,8 @@ def execute_python_script(db_path: str, script_path: str) -> bool:
         )
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error executing Python script {script_path}:", file=sys.stderr)
-        print(e.stderr.decode(), file=sys.stderr)
+        console.print(f"[bold red]Error[/bold red] executing Python script {script_path}:")
+        console.print(e.stderr.decode(), style="red")
         return False
 
 
@@ -247,8 +253,8 @@ def execute_shell_script(db_path: str, script_path: str) -> bool:
         )
         return True
     except subprocess.CalledProcessError as e:
-        print(f"Error executing shell script {script_path}:", file=sys.stderr)
-        print(e.stderr.decode(), file=sys.stderr)
+        console.print(f"[bold red]Error[/bold red] executing shell script {script_path}:")
+        console.print(e.stderr.decode(), style="red")
         return False
 
 
@@ -263,7 +269,7 @@ def execute_migration_script(db_path: str, script_path: str) -> bool:
     elif ext == ".sh":
         return execute_shell_script(db_path, script_path)
     else:
-        print(f"Unsupported script type: {script_path}", file=sys.stderr)
+        console.print(f"[bold red]Unsupported script type:[/bold red] {script_path}")
         return False
 
 
@@ -288,6 +294,13 @@ def run_migrations(
     
     Returns True if all migrations succeed, False otherwise.
     """
+    # Keep track of migration statistics
+    stats = {
+        "applied": 0,
+        "skipped": 0,
+        "failed": 0,
+        "total_time": 0
+    }
     # Connect to the database
     conn = sqlite3.connect(db_path)
     try:
@@ -301,7 +314,7 @@ def run_migrations(
         try:
             migration_scripts = get_migration_scripts(migrations_dir)
         except ValueError as e:
-            print(f"Error: {e}", file=sys.stderr)
+            console.print(f"[bold red]Error:[/bold red] {e}")
             return False
         
         # Find pending migrations
@@ -312,7 +325,7 @@ def run_migrations(
         }
         
         if not pending_migrations:
-            print(f"Database is up to date (version {current_version})")
+            console.print(f"[green]Database is up to date[/green] (version {current_version})")
             return True
         
         # Sort migrations by version
@@ -320,21 +333,22 @@ def run_migrations(
         
         # If dry run, just report which migrations would be run
         if dry_run:
-            print(f"Dry run: Would apply {len(sorted_versions)} migrations to {db_path}")
-            print(f"Current database version: {current_version}")
+            console.print(f"[blue]Dry run:[/blue] Would apply [bold]{len(sorted_versions)}[/bold] migrations to {db_path}")
+            console.print(f"Current database version: [bold]{current_version}[/bold]")
             
             for version in sorted_versions:
                 script_path = pending_migrations[version]
                 script_name = os.path.basename(script_path)
-                print(f"Would apply migration {version}: {script_name}")
+                console.print(f"  → Would apply migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
             
             return True
             
         # Execute migrations
+        start_time = time.time()
         for version in sorted_versions:
             script_path = pending_migrations[version]
             script_name = os.path.basename(script_path)
-            print(f"Migration {version}: {script_name}")
+            console.print(f"Migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
             
             # If interactive mode is enabled, prompt user
             if interactive:
@@ -345,19 +359,22 @@ def run_migrations(
                         apply_migration = True
                         break
                     elif response in ["n", "no"]:
-                        print(f"Skipping migration {version}")
+                        console.print(f"[yellow]Skipping[/yellow] migration {version}")
+                        stats["skipped"] += 1
                         break  # Break out of the prompt loop
                     elif response in ["q", "quit"]:
-                        print("Migration process aborted by user")
+                        console.print("[yellow]Migration process aborted by user[/yellow]")
                         return False
                     else:
-                        print("Please enter 'y' (yes), 'n' (no), or 'q' (quit)")
+                        console.print("Please enter 'y' (yes), 'n' (no), or 'q' (quit)")
                 
                 # Skip to the next migration if user chose not to apply this one
                 if not apply_migration:
                     continue
             
-            print(f"Applying migration {version}: {script_name}")
+            # Start timing this migration
+            migration_start = time.time()
+            console.print(f"[blue]Applying[/blue] migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
             
             # Create a backup before executing the script
             backup_path = create_db_backup(db_path)
@@ -371,16 +388,30 @@ def run_migrations(
             success = execute_migration_script(db_path, script_path)
             
             if not success:
-                print(f"Migration failed: {script_path}", file=sys.stderr)
-                print("Restoring database from backup...", file=sys.stderr)
+                console.print(f"[bold red]Migration failed:[/bold red] {script_path}")
+                console.print("[yellow]Restoring database from backup...[/yellow]")
                 
                 # Restore from backup
                 if restore_db_backup(backup_path, db_path):
-                    print("Database restored successfully", file=sys.stderr)
+                    console.print("[green]Database restored successfully[/green]")
                 else:
-                    print("WARNING: Failed to restore database from backup", file=sys.stderr)
+                    console.print("[bold red]WARNING: Failed to restore database from backup[/bold red]")
+                
+                stats["failed"] += 1
+                
+                # Show summary
+                console.print("\n[bold red]Migration Failed[/bold red]")
+                console.print(f"  • [bold]{stats['applied']}[/bold] migrations applied")
+                console.print(f"  • [bold]{stats['skipped']}[/bold] migrations skipped")
+                console.print(f"  • [bold]{stats['failed']}[/bold] migrations failed")
+                console.print(f"  • Total time: [bold]{time.time() - start_time:.2f}[/bold] seconds")
                 
                 return False
+            
+            # Record migration duration
+            migration_duration = time.time() - migration_start
+            stats["total_time"] += migration_duration
+            stats["applied"] += 1
             
             # Remove backup after successful migration
             if os.path.exists(backup_path):
@@ -389,7 +420,17 @@ def run_migrations(
             # Reopen connection and update version
             conn = sqlite3.connect(db_path)
             set_db_version(conn, version)
-            print(f"Database updated to version {version}")
+            console.print(f"[green]✓[/green] Database updated to version [bold]{version}[/bold] [dim]({migration_duration:.2f}s)[/dim]")
+        
+        # Show summary of successful run
+        if stats["applied"] > 0:
+            total_duration = time.time() - start_time
+            console.print("\n[bold green]Migration Complete[/bold green]")
+            console.print(f"  • [bold]{stats['applied']}[/bold] migrations applied")
+            if stats["skipped"] > 0:
+                console.print(f"  • [bold]{stats['skipped']}[/bold] migrations skipped")
+            console.print(f"  • Database now at version [bold]{sorted_versions[-1]}[/bold]")
+            console.print(f"  • Total time: [bold]{total_duration:.2f}[/bold] seconds")
         
         return True
     
