@@ -1,2 +1,0 @@
-[console_scripts]
-fastmigrate = fastmigrate.cli:main
