@@ -43,5 +43,5 @@ Does sqlite have primitives which can enforce that invariant automatically and r
 - [x]  add rollback for failed migrations
 - [x]  add interactive mode
 - [x]  add dry-run mode
-- [ ]  add structured logging
+- [x]  add better logging
 
