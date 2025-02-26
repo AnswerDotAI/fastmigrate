@@ -37,7 +37,8 @@ def run_cli_migration(
     config_path: str,
     dry_run: bool,
     interactive: bool,
-    show_version: bool = False
+    show_version: bool = False,
+    create_db: bool = False
 ) -> None:
     """Run the migration process with CLI parameters."""
     # Handle version flag
@@ -60,10 +61,15 @@ def run_cli_migration(
             if "migrations" in cfg["paths"] and migrations == "migrations":  # Only if default wasn't overridden by CLI
                 migrations_path = cfg["paths"]["migrations"]
     
-    # For dry-run mode, ensure only parent directories exist
-    if dry_run:
-        # Create parent directory for the DB file in dry-run mode to make it more user-friendly
-        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    # Create parent directory
+    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    
+    # Create database file if requested and it doesn't exist
+    if create_db and not os.path.exists(db_path):
+        # Create an empty SQLite database
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        typer.echo(f"Created new SQLite database at: {db_path}")
     
     # Run migrations
     success = run_migrations(db_path, migrations_path, dry_run=dry_run, interactive=interactive)
@@ -89,6 +95,9 @@ def main(
     interactive: bool = typer.Option(
         False, "--interactive", help="Prompt for confirmation before each migration"
     ),
+    create_db: bool = typer.Option(
+        False, "--createdb", help="Create the database file if it doesn't exist"
+    ),
     version: bool = typer.Option(
         False, "--version", "-v", help="Show version and exit"
     ),
@@ -97,7 +106,7 @@ def main(
     
     Paths can be provided via CLI options or read from config file.
     """
-    run_cli_migration(db, migrations, config_path, dry_run, interactive, version)
+    run_cli_migration(db, migrations, config_path, dry_run, interactive, version, create_db)
 
 # This function is our CLI entry point (called when the user runs 'fastmigrate')
 def main_wrapper():
