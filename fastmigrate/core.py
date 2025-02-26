@@ -2,11 +2,12 @@
 
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional
 
 
 def ensure_meta_table(conn: sqlite3.Connection) -> None:
@@ -60,7 +61,7 @@ def ensure_meta_table(conn: sqlite3.Connection) -> None:
                 conn.execute("INSERT INTO _meta (id, version) VALUES (1, ?)", (current_version,))
                 conn.execute("DROP TABLE _meta_old")
                 conn.commit()
-            except:
+            except Exception:
                 # If an error occurred, roll back
                 conn.rollback()
         except Exception as e:
@@ -141,26 +142,90 @@ def get_migration_scripts(migrations_dir: str) -> Dict[int, str]:
     return migration_scripts
 
 
-def execute_sql_script(db_path: str, script_path: str) -> bool:
-    """Execute a SQL script against the database."""
+def create_db_backup(db_path: str) -> str:
+    """Create a backup of the database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        str: Path to the backup file
+    """
+    backup_path = f"{db_path}.backup"
+    shutil.copy2(db_path, backup_path)
+    return backup_path
+
+
+def restore_db_backup(backup_path: str, db_path: str) -> bool:
+    """Restore database from backup.
+    
+    Args:
+        backup_path: Path to the backup file
+        db_path: Path to the target database file
+        
+    Returns:
+        bool: True if restore was successful, False otherwise
+    """
     try:
-        result = subprocess.run(
-            ["sqlite3", db_path],
-            input=Path(script_path).read_bytes(),
-            capture_output=True,
-            check=True,
-        )
+        # If the DB file exists, remove it first
+        if os.path.exists(db_path):
+            os.remove(db_path)
+        
+        # Copy the backup back to the original location
+        shutil.copy2(backup_path, db_path)
+        
+        # Remove the backup file
+        os.remove(backup_path)
+        
         return True
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing SQL script {script_path}:", file=sys.stderr)
-        print(e.stderr.decode(), file=sys.stderr)
+    except Exception as e:
+        print(f"Error restoring database backup: {e}", file=sys.stderr)
         return False
+
+
+def execute_sql_script(db_path: str, script_path: str) -> bool:
+    """Execute a SQL script against the database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        script_path: Path to the SQL script file
+        
+    Returns:
+        bool: True if the script executed successfully, False otherwise
+    """
+    # Connect directly to the database
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        
+        # Read script content
+        script_content = Path(script_path).read_text()
+        
+        # Execute the script
+        conn.executescript(script_content)
+        return True
+        
+    except sqlite3.Error as e:
+        # SQL error occurred
+        print(f"Error executing SQL script {script_path}:", file=sys.stderr)
+        print(f"  {e}", file=sys.stderr)
+        return False
+    
+    except Exception as e:
+        # Handle other errors (file not found, etc.)
+        print(f"Error executing SQL script {script_path}:", file=sys.stderr)
+        print(f"  {e}", file=sys.stderr)
+        return False
+        
+    finally:
+        if conn:
+            conn.close()
 
 
 def execute_python_script(db_path: str, script_path: str) -> bool:
     """Execute a Python script."""
     try:
-        result = subprocess.run(
+        subprocess.run(
             [sys.executable, script_path, db_path],
             capture_output=True,
             check=True,
@@ -175,7 +240,7 @@ def execute_python_script(db_path: str, script_path: str) -> bool:
 def execute_shell_script(db_path: str, script_path: str) -> bool:
     """Execute a shell script."""
     try:
-        result = subprocess.run(
+        subprocess.run(
             ["sh", script_path, db_path],
             capture_output=True,
             check=True,
@@ -204,6 +269,11 @@ def execute_migration_script(db_path: str, script_path: str) -> bool:
 
 def run_migrations(db_path: str, migrations_dir: str) -> bool:
     """Run all pending migrations.
+    
+    Uses a backup/restore approach for rollback:
+    1. Before each migration, backs up the database
+    2. If migration fails, restores from backup
+    3. If migration succeeds, removes backup and updates version
     
     Returns True if all migrations succeed, False otherwise.
     """
@@ -240,17 +310,43 @@ def run_migrations(db_path: str, migrations_dir: str) -> bool:
         # Execute migrations
         for version in sorted_versions:
             script_path = pending_migrations[version]
-            print(f"Applying migration {version}: {os.path.basename(script_path)}")
+            script_name = os.path.basename(script_path)
+            print(f"Applying migration {version}: {script_name}")
             
-            if not execute_migration_script(db_path, script_path):
+            # Create a backup before executing the script
+            backup_path = create_db_backup(db_path)
+            
+            # Close the connection before running the script
+            # Each script will open its own connection
+            conn.close()
+            conn = None
+            
+            # Execute the migration script
+            success = execute_migration_script(db_path, script_path)
+            
+            if not success:
                 print(f"Migration failed: {script_path}", file=sys.stderr)
+                print("Restoring database from backup...", file=sys.stderr)
+                
+                # Restore from backup
+                if restore_db_backup(backup_path, db_path):
+                    print("Database restored successfully", file=sys.stderr)
+                else:
+                    print("WARNING: Failed to restore database from backup", file=sys.stderr)
+                
                 return False
             
-            # Update database version
+            # Remove backup after successful migration
+            if os.path.exists(backup_path):
+                os.remove(backup_path)
+            
+            # Reopen connection and update version
+            conn = sqlite3.connect(db_path)
             set_db_version(conn, version)
             print(f"Database updated to version {version}")
         
         return True
     
     finally:
-        conn.close()
+        if conn:
+            conn.close()
