@@ -6,6 +6,14 @@ Notes on the dev experience so far:
 - AI generated a lot of code, which seemed correct, but worked less incrementally than would be preferable.
 - AI got confused by setup.py vs pyproject.toml, and needed a few iterations to resolve that.
 
+- Benefited from prompting regarding more test cases
+- GOt list of suggestions
+- Benefited from prompting regarding rollback
+
+thoughts:
+- tests pass. but who tests the tests?
+
+
 ## Notes on work to do, as of commit b1b061d
 
 ### Reorganizing existing test data into a named 'test suite'
@@ -29,4 +37,11 @@ Right now, there is a lot of code which handles the db version value, and ensure
 
 Does sqlite have primitives which can enforce that invariant automatically and reduce the amount of code needed.
 
+
+## Improvements to consider after 2380fe0
+
+- [ ]  add rollback for failed migrations
+- [ ]  add structured logging
+- [ ]  add interactive mode
+- [ ]  add dry-run mode
 
