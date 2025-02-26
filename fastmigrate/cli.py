@@ -4,6 +4,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
+import sqlite3
 
 import typer
 from typer import Typer
