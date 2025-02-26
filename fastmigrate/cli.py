@@ -8,6 +8,7 @@ from typing import Optional
 import typer
 from typer import Typer
 import configparser
+from rich.console import Console
 
 from fastmigrate.core import run_migrations
 
