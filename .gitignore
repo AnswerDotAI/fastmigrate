@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+test_dir/
+.coverage
+htmlcov/
