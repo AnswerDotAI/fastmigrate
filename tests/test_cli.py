@@ -23,7 +23,9 @@ def test_cli_help():
     """Test the CLI help output."""
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0
-    assert "Run SQLite database migrations" in result.stdout
+    # The help text moved to the docstring of the main function
+    # After our refactoring, this might be displayed differently
+    assert "Structured migration of data in SQLite databases" in result.stdout
 
 
 def test_cli_defaults():
