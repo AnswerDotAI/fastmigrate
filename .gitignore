@@ -8,3 +8,7 @@ build/
 test_dir/
 .coverage
 htmlcov/
+
+# Database files
+data/
+*.db
