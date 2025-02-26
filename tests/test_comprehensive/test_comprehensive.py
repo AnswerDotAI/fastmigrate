@@ -4,12 +4,11 @@ Comprehensive test suite for fastmigrate.
 This test is designed to be highly legible and test all aspects of fastmigrate
 in a single integrated test flow, verifying:
 1. Basic migration functionality
-2. Rollback on failure
-3. Interactive mode
-4. Dry run mode
-5. Version tracking
-6. Detection of migration script errors
-7. All supported script types (SQL, Python, Shell)
+2. Handling migration failures
+3. Version tracking
+4. Detection of migration script errors
+5. All supported script types (SQL, Python, Shell)
+6. Resuming migration after fixing errors
 
 Each step is clearly documented with intermediate assertions to make it
 easy to understand what's happening and what's expected.
