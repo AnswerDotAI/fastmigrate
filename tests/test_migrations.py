@@ -19,6 +19,9 @@ def test_run_migrations_sql():
         
         # Create a test database
         db_path = os.path.join(temp_dir, "test.db")
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create SQL migration files
         with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
@@ -82,6 +85,9 @@ def test_run_migrations_python():
         
         # Create a test database
         db_path = os.path.join(temp_dir, "test.db")
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create a base SQL migration
         with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
@@ -135,6 +141,9 @@ def test_run_migrations_failed():
         
         # Create a test database
         db_path = os.path.join(temp_dir, "test.db")
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create a valid migration
         with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
@@ -170,6 +179,9 @@ def test_testsuite_a():
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a test database
         db_path = Path(temp_dir) / "test.db"
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Run migrations
         assert run_migrations(str(db_path), str(migrations_dir)) is True

@@ -22,6 +22,9 @@ def test_sql_transaction_rollback():
         db_path = temp_dir_path / "test.db"
         migrations_dir = temp_dir_path / "migrations"
         migrations_dir.mkdir()
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create first migration - establishes schema
         with open(migrations_dir / "0001-initial.sql", "w") as f:
@@ -138,6 +141,9 @@ def test_large_transaction_rollback():
         db_path = temp_dir_path / "test.db"
         migrations_dir = temp_dir_path / "migrations"
         migrations_dir.mkdir()
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create initial migration
         with open(migrations_dir / "0001-initial.sql", "w") as f:
@@ -225,6 +231,9 @@ def test_python_script_rollback():
         db_path = temp_dir_path / "test.db"
         migrations_dir = temp_dir_path / "migrations"
         migrations_dir.mkdir()
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create initial migration to set up the schema
         with open(migrations_dir / "0001-initial.sql", "w") as f:
@@ -288,6 +297,9 @@ def test_shell_script_rollback():
         db_path = temp_dir_path / "test.db"
         migrations_dir = temp_dir_path / "migrations"
         migrations_dir.mkdir()
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create initial migration to set up the schema
         with open(migrations_dir / "0001-initial.sql", "w") as f:

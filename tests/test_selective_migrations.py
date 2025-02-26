@@ -26,6 +26,9 @@ def test_selective_migrations_core():
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
         migrations_dir = SELECTIVE_DIR / "migrations"
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # First run: should apply all migrations (0001 through 0010)
         assert run_migrations(str(db_path), str(migrations_dir)) is True
@@ -90,6 +93,9 @@ def test_selective_migrations_resume_after_failure():
         db_path = temp_dir_path / "test.db"
         migrations_dir = temp_dir_path / "migrations"
         migrations_dir.mkdir()
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create initial migration
         with open(migrations_dir / "0001-initial.sql", "w") as f:
@@ -166,6 +172,9 @@ def test_selective_migrations_with_gaps():
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
         migrations_dir = SELECTIVE_DIR / "migrations"
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Run migrations
         assert run_migrations(str(db_path), str(migrations_dir)) is True
@@ -189,6 +198,9 @@ def test_cli_selective_migrations():
     """Test selective migrations via the CLI interface."""
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create a temporary migrations directory with just one initial migration
         migrations_dir = Path(temp_dir) / "migrations"

@@ -54,8 +54,10 @@ def run_cli_migration(
             if "migrations" in cfg["paths"] and migrations == "migrations":  # Only if default wasn't overridden by CLI
                 migrations_path = cfg["paths"]["migrations"]
     
-    # Ensure db directory exists
-    os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+    # For dry-run mode, ensure only parent directories exist
+    if dry_run:
+        # Create parent directory for the DB file in dry-run mode to make it more user-friendly
+        os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     
     # Run migrations
     success = run_migrations(db_path, migrations_path, dry_run=dry_run, interactive=interactive)

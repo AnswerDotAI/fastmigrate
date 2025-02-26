@@ -301,6 +301,49 @@ def run_migrations(
         "failed": 0,
         "total_time": 0
     }
+    
+    # For dry-run mode, we don't need the database to exist
+    if dry_run:
+        # If database doesn't exist, we assume version 0
+        if not os.path.exists(db_path):
+            console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
+            console.print("Assuming version 0 for dry-run mode")
+            current_version = 0
+            
+            # Get all migration scripts
+            try:
+                migration_scripts = get_migration_scripts(migrations_dir)
+            except ValueError as e:
+                console.print(f"[bold red]Error:[/bold red] {e}")
+                return False
+            
+            # Find pending migrations (all of them, since we're at version 0)
+            pending_migrations = migration_scripts
+            
+            if not pending_migrations:
+                console.print(f"[green]No migrations found[/green] in {migrations_dir}")
+                return True
+            
+            # Sort migrations by version
+            sorted_versions = sorted(pending_migrations.keys())
+            
+            console.print(f"[blue]Dry run:[/blue] Would apply [bold]{len(sorted_versions)}[/bold] migrations to {db_path}")
+            console.print(f"Current database version: [bold]0[/bold] (database does not exist yet)")
+            
+            for version in sorted_versions:
+                script_path = pending_migrations[version]
+                script_name = os.path.basename(script_path)
+                console.print(f"  → Would apply migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
+            
+            return True
+    else:
+        # Check if database file exists
+        if not os.path.exists(db_path):
+            console.print(f"[bold red]Error:[/bold red] Database file does not exist: {db_path}")
+            console.print("The database file must exist before running migrations.")
+            console.print("Use --dry-run to preview migrations without requiring the database file.")
+            return False
+    
     # Connect to the database
     conn = sqlite3.connect(db_path)
     try:
