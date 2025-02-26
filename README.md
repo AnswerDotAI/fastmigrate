@@ -28,13 +28,4 @@ It will then detect every validly-named file in the migrations directory, select
   - determining if there are any migration scripts with versions higher than the db version
   - trying to run those scripts
 
-### Transaction Support
 
-SQLite migrations (.sql files) are executed within transactions, which ensures that database changes are atomic. If any statement in a migration fails:
-
-1. All changes made in that migration are rolled back
-2. The database remains in a consistent state from the last successful migration
-3. The current database version is not updated
-4. No further migrations are applied
-
-This protection requires SQLite 3.37.0 or later for full transaction support including DDL statements (CREATE/ALTER/DROP TABLE).
