@@ -245,12 +245,10 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
             original_input = builtins.input
             responses = []
             
-            # Generate simulated user responses
+            # With new changes, we can only accept or quit, so we'll just say yes to everything
+            # since we can no longer skip individual migrations
             for version in sorted(get_migration_scripts(migrations_dir).keys()):
-                if version in selected_versions:
-                    responses.append("y")  # Yes to selected versions
-                else:
-                    responses.append("n")  # No to other versions
+                responses.append("y")  # Yes to all versions
             
             response_index = 0
             
@@ -271,37 +269,30 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
                 # Restore original input function
                 builtins.input = original_input
         
-        # Simulate user selecting only migrations 10 and 12
-        selected_versions = [10, 12]
+        # Now we must apply all migrations (no more selective migrations)
+        all_versions = [10, 11, 12]
         success = simulate_interactive_migrations(
-            self.db_path, migrations_interactive, selected_versions
+            self.db_path, migrations_interactive, all_versions
         )
         
         # Verify it succeeded
         self.assertTrue(success, "Interactive migrations should succeed")
         
-        # Verify only selected migrations were applied
+        # All migrations will be applied now
         self.conn = sqlite3.connect(self.db_path)
         
-        # DB version should be the highest selected version
+        # DB version should be the highest version
         db_version = get_db_version(self.conn)
         self.assertEqual(db_version, 12, 
                          "DB version should be set to highest applied migration (12)")
         
-        # Check that tables 10 and 12 exist (selected)
-        for version in selected_versions:
+        # Check that all tables exist
+        for version in all_versions:
             cursor = self.conn.execute(
                 f"SELECT name FROM sqlite_master WHERE type='table' AND name='table_{version}'"
             )
             self.assertIsNotNone(cursor.fetchone(), 
-                                f"Table table_{version} should exist (selected in interactive mode)")
-        
-        # Check that table 11 doesn't exist (not selected)
-        cursor = self.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='table_11'"
-        )
-        self.assertIsNone(cursor.fetchone(), 
-                          "Table table_11 should NOT exist (skipped in interactive mode)")
+                                f"Table table_{version} should exist (all migrations applied in interactive mode)")
         
         print("\n--- Comprehensive Test Suite Completed Successfully ---")
     

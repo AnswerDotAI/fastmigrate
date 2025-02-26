@@ -94,7 +94,7 @@ def main(
         False, "--dry-run", help="Show which migrations would be run without executing them"
     ),
     interactive: bool = typer.Option(
-        False, "--interactive", help="Prompt for confirmation before each migration"
+        False, "--interactive", help="Prompt for confirmation before each migration (yes or quit only)"
     ),
     create_db: bool = typer.Option(
         False, "--createdb", help="Create the database file if it doesn't exist"

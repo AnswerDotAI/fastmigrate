@@ -396,21 +396,17 @@ def run_migrations(
             if interactive:
                 apply_migration = False
                 while True:
-                    response = input("Apply this migration? [y/n/q]: ").lower().strip()
+                    response = input("Apply this migration? [y/q]: ").lower().strip()
                     if response in ["y", "yes"]:
                         apply_migration = True
                         break
-                    elif response in ["n", "no"]:
-                        console.print(f"[yellow]Skipping[/yellow] migration {version}")
-                        stats["skipped"] += 1
-                        break  # Break out of the prompt loop
-                    elif response in ["q", "quit"]:
+                    elif response in ["q", "quit", "n", "no"]:
                         console.print("[yellow]Migration process aborted by user[/yellow]")
                         return False
                     else:
-                        console.print("Please enter 'y' (yes), 'n' (no), or 'q' (quit)")
+                        console.print("Please enter 'y' (yes) or 'q' (quit)")
                 
-                # Skip to the next migration if user chose not to apply this one
+                # This will always be True if we reach here
                 if not apply_migration:
                     continue
             

@@ -201,22 +201,22 @@ def test_interactive_mode():
         conn.commit()
         conn.close()
         
-        # Test case 2: User skips second migration
-        with patch('builtins.input', side_effect=['y', 'n', 'y']):
+        # Test case 2: User tries to quit at second migration (similar to previous skip behavior)
+        with patch('builtins.input', side_effect=['y', 'n']):
             success = run_migrations(str(db_path), str(migrations_dir), interactive=True)
-            assert success is True
+            assert success is False  # Now this should fail, not succeed
             
-            # First and third tables should be created, but not second
+            # Only the first migration should have been applied before quitting
             conn = sqlite3.connect(db_path)
             cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
-            assert cursor.fetchone()[0] == 3  # Version is still 3 (highest applied)
+            assert cursor.fetchone()[0] == 1  # Version should be 1 since we quit at migration 2
             
             tables = [
                 row[0] for row in conn.execute(
                     "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('test1', 'test2', 'test3')"
                 ).fetchall()
             ]
-            assert sorted(tables) == ['test1', 'test3']  # test2 should be missing
+            assert sorted(tables) == ['test1']  # Only test1 should exist
             conn.close()
         
         # Reset database for next test

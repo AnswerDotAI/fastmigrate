@@ -4,7 +4,7 @@ The fastmigrate library helps you with structured migration of data in SQLite. T
 
 Here's how it works for a user.
 
-In a directory containing a `.fastmigrate` file (which will generally be the project root), the user calls `fastmigrate`. By default, this will look off the current directory for a migrations subdirectory called `migrations` and a database in `data/database.db`. These values can also be overriden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format.
+In a directory containing a `.fastmigrate` file (which will generally be the project root), the user calls `fastmigrate`. By default, this will look off of `./migrations/` for migration scripts and off of `./data/database.db` for a database. These values can also be overriden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format.
 
 It will then detect every validly-named file in the migrations directory, select the ones with version numbers greater than the current db version number, and apply the files in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
 
@@ -30,7 +30,7 @@ It will then detect every validly-named file in the migrations directory, select
 
 ### Rollback Guarantees
 
-FastMigrate provides a robust backup/restore mechanism to ensure database integrity:
+FastMigrate provides a simple backup/restore mechanism to ensure database integrity:
 
 1. **Full Database Backup**: Before executing each migration script (SQL, Python, or Shell), FastMigrate creates a complete backup of the database file.
 
