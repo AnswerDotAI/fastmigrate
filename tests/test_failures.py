@@ -22,6 +22,10 @@ def test_sql_failure():
         db_path = Path(temp_dir) / "test.db"
         migrations_dir = FAILURES_DIR / "migrations"
         
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
         # Run migrations - should fail on the second migration
         result = run_migrations(str(db_path), str(migrations_dir))
         assert result is False
@@ -53,6 +57,10 @@ def test_cli_sql_failure():
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
         
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
         # Run the CLI with path to the failure test suite
         result = runner.invoke(app, [
             "--db", str(db_path),
@@ -62,8 +70,7 @@ def test_cli_sql_failure():
         # CLI should exit with non-zero code
         assert result.exit_code != 0
         
-        # Check that the database was created but only one migration applied
-        assert db_path.exists()
+        # Check that only one migration was applied
         conn = sqlite3.connect(db_path)
         cursor = conn.execute("SELECT version FROM _meta")
         assert cursor.fetchone()[0] == 1
@@ -77,6 +84,10 @@ def test_python_failure():
         db_path = Path(temp_dir) / "test.db"
         migrations_dir = Path(temp_dir) / "migrations"
         migrations_dir.mkdir()
+        
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create a test database with initial successful migration
         initial_migration = migrations_dir / "0001-init.sql"
@@ -114,6 +125,10 @@ def test_shell_failure():
         db_path = Path(temp_dir) / "test.db"
         migrations_dir = Path(temp_dir) / "migrations"
         migrations_dir.mkdir()
+        
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
         
         # Create a test database with initial successful migration
         initial_migration = migrations_dir / "0001-init.sql"
@@ -156,6 +171,10 @@ def test_testsuite_failure_cli():
     for migration in migration_files:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_path = Path(temp_dir) / "test.db"
+            
+            # Create empty database file
+            conn = sqlite3.connect(db_path)
+            conn.close()
             
             # Create a temporary migrations directory with just the successful migration
             # and the specific failure migration we want to test

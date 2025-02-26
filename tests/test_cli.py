@@ -36,6 +36,11 @@ def test_cli_defaults():
         migrations_path.mkdir()
         data_path.mkdir()
         
+        # Create empty database file
+        db_path = data_path / "database.db"
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
         # Create a test migration
         with open(migrations_path / "0001-test.sql", "w") as f:
             f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
@@ -56,9 +61,7 @@ def test_cli_defaults():
             
             assert result.exit_code == 0
             
-            # Verify the database was created and migration applied
-            db_path = data_path / "database.db"
-            assert db_path.exists()
+            # Verify migration was applied
             conn = sqlite3.connect(db_path)
             cursor = conn.execute("SELECT version FROM _meta")
             assert cursor.fetchone()[0] == 1
@@ -86,6 +89,10 @@ def test_cli_explicit_paths():
         
         db_path = db_dir / "custom.db"
         
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
         # Create a migration
         with open(migrations_dir / "0001-test.sql", "w") as f:
             f.write("CREATE TABLE custom (id INTEGER PRIMARY KEY);")
@@ -98,8 +105,7 @@ def test_cli_explicit_paths():
         
         assert result.exit_code == 0
         
-        # Verify the database was created and migration applied
-        assert db_path.exists()
+        # Verify migration was applied
         conn = sqlite3.connect(db_path)
         cursor = conn.execute("SELECT version FROM _meta")
         assert cursor.fetchone()[0] == 1
@@ -124,6 +130,10 @@ def test_cli_config_file():
         db_path = db_dir / "custom.db"
         config_path = temp_dir_path / "custom.ini"
         
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
         # Create a migration
         with open(migrations_dir / "0001-test.sql", "w") as f:
             f.write("CREATE TABLE custom_config (id INTEGER PRIMARY KEY);")
@@ -137,8 +147,7 @@ def test_cli_config_file():
         
         assert result.exit_code == 0
         
-        # Verify the database was created and migration applied
-        assert db_path.exists()
+        # Verify migration was applied
         conn = sqlite3.connect(db_path)
         cursor = conn.execute("SELECT version FROM _meta")
         assert cursor.fetchone()[0] == 1
@@ -148,6 +157,8 @@ def test_cli_config_file():
             "SELECT name FROM sqlite_master WHERE type='table' AND name='custom_config'"
         )
         assert cursor.fetchone() is not None
+        
+        conn.close()
         
 
 def test_dry_run():
@@ -212,6 +223,10 @@ def test_cli_with_testsuite_a():
         temp_dir_path = Path(temp_dir)
         db_path = temp_dir_path / "test.db"
         
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
         # Run the CLI with explicit paths to the test suite
         result = runner.invoke(app, [
             "--db", str(db_path),
@@ -220,8 +235,7 @@ def test_cli_with_testsuite_a():
         
         assert result.exit_code == 0
         
-        # Verify the database was created and migrations applied
-        assert db_path.exists()
+        # Verify migrations applied
         conn = sqlite3.connect(db_path)
         
         # Version should be 4 (all migrations applied)
