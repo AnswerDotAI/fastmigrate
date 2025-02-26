@@ -6,12 +6,17 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from typer import Typer
 import configparser
 
 from fastmigrate.core import run_migrations
 
-app = typer.Typer(help="Structured migration of data in SQLite databases")
+app = Typer(help="Structured migration of data in SQLite databases")
 
+
+def main_wrapper():
+    """Entry point for the CLI."""
+    app()
 
 @app.command()
 def main(
@@ -22,8 +27,8 @@ def main(
         "migrations", "--migrations", help="Path to the migrations directory", 
         dir_okay=True, file_okay=False
     ),
-    config: Path = typer.Option(
-        ".fastmigrate", help="Path to config file (default: .fastmigrate)"
+    config_path: str = typer.Option(
+        ".fastmigrate", "--config", help="Path to config file (default: .fastmigrate)"
     ),
     dry_run: bool = typer.Option(
         False, "--dry-run", help="Show which migrations would be run without executing them"
@@ -40,9 +45,10 @@ def main(
     migrations_path = migrations
     
     # Read from config file if it exists
-    if config.exists():
+    config_file = Path(config_path)
+    if config_file.exists():
         cfg = configparser.ConfigParser()
-        cfg.read(config)
+        cfg.read(config_file)
         if "paths" in cfg:
             # Config file overrides defaults, but CLI options override config file
             if "db" in cfg["paths"] and db == "data/database.db":  # Only if default wasn't overridden by CLI
