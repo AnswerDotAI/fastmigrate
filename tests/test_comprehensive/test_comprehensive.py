@@ -12,6 +12,9 @@ in a single integrated test flow, verifying:
 
 Each step is clearly documented with intermediate assertions to make it
 easy to understand what's happening and what's expected.
+
+Note: This test verifies the core functionality of fastmigrate after simplification.
+Failed migrations now stop the migration process but don't roll back previous changes.
 """
 
 import os

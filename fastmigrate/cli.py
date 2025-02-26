@@ -97,6 +97,10 @@ def main(
 ) -> None:
     """Run SQLite database migrations.
     
+    FastMigrate applies migration scripts to a SQLite database in sequential order.
+    It keeps track of which migrations have been applied using a _meta table
+    in the database, and only runs scripts that have not yet been applied.
+    
     Paths can be provided via CLI options or read from config file.
     """
     run_cli_migration(db, migrations, config_path, version, create_db)
