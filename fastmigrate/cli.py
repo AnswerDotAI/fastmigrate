@@ -25,6 +25,12 @@ def main(
     config: Path = typer.Option(
         ".fastmigrate", help="Path to config file (default: .fastmigrate)"
     ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Show which migrations would be run without executing them"
+    ),
+    interactive: bool = typer.Option(
+        False, "--interactive", help="Prompt for confirmation before each migration"
+    ),
 ) -> None:
     """Run SQLite database migrations.
     
@@ -48,7 +54,7 @@ def main(
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     
     # Run migrations
-    success = run_migrations(db_path, migrations_path)
+    success = run_migrations(db_path, migrations_path, dry_run=dry_run, interactive=interactive)
     if not success:
         sys.exit(1)
 

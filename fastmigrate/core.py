@@ -267,13 +267,24 @@ def execute_migration_script(db_path: str, script_path: str) -> bool:
         return False
 
 
-def run_migrations(db_path: str, migrations_dir: str) -> bool:
+def run_migrations(
+    db_path: str, 
+    migrations_dir: str, 
+    dry_run: bool = False,
+    interactive: bool = False
+) -> bool:
     """Run all pending migrations.
     
     Uses a backup/restore approach for rollback:
     1. Before each migration, backs up the database
     2. If migration fails, restores from backup
     3. If migration succeeds, removes backup and updates version
+    
+    Args:
+        db_path: Path to the SQLite database file
+        migrations_dir: Path to the directory containing migration scripts
+        dry_run: If True, only report which migrations would be run without executing them
+        interactive: If True, prompt user before running each migration
     
     Returns True if all migrations succeed, False otherwise.
     """
@@ -307,10 +318,45 @@ def run_migrations(db_path: str, migrations_dir: str) -> bool:
         # Sort migrations by version
         sorted_versions = sorted(pending_migrations.keys())
         
+        # If dry run, just report which migrations would be run
+        if dry_run:
+            print(f"Dry run: Would apply {len(sorted_versions)} migrations to {db_path}")
+            print(f"Current database version: {current_version}")
+            
+            for version in sorted_versions:
+                script_path = pending_migrations[version]
+                script_name = os.path.basename(script_path)
+                print(f"Would apply migration {version}: {script_name}")
+            
+            return True
+            
         # Execute migrations
         for version in sorted_versions:
             script_path = pending_migrations[version]
             script_name = os.path.basename(script_path)
+            print(f"Migration {version}: {script_name}")
+            
+            # If interactive mode is enabled, prompt user
+            if interactive:
+                apply_migration = False
+                while True:
+                    response = input("Apply this migration? [y/n/q]: ").lower().strip()
+                    if response in ["y", "yes"]:
+                        apply_migration = True
+                        break
+                    elif response in ["n", "no"]:
+                        print(f"Skipping migration {version}")
+                        break  # Break out of the prompt loop
+                    elif response in ["q", "quit"]:
+                        print("Migration process aborted by user")
+                        return False
+                    else:
+                        print("Please enter 'y' (yes), 'n' (no), or 'q' (quit)")
+                
+                # Skip to the next migration if user chose not to apply this one
+                if not apply_migration:
+                    continue
+            
             print(f"Applying migration {version}: {script_name}")
             
             # Create a backup before executing the script

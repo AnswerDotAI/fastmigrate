@@ -4,10 +4,10 @@ import os
 import sqlite3
 import tempfile
 from pathlib import Path
-from typing import List
+import io
+import sys
 from unittest.mock import patch
 
-import pytest
 from typer.testing import CliRunner
 
 from fastmigrate.cli import app
@@ -146,6 +146,60 @@ def test_cli_config_file():
             "SELECT name FROM sqlite_master WHERE type='table' AND name='custom_config'"
         )
         assert cursor.fetchone() is not None
+        
+
+def test_dry_run():
+    """Test dry run mode."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        db_path = temp_dir_path / "test.db"
+        migrations_dir = temp_dir_path / "migrations"
+        migrations_dir.mkdir()
+        
+        # Create a database with version 0
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            CREATE TABLE _meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+        conn.commit()
+        conn.close()
+        
+        # Create migration scripts
+        with open(migrations_dir / "0001-first.sql", "w") as f:
+            f.write("CREATE TABLE test1 (id INTEGER PRIMARY KEY);")
+        
+        with open(migrations_dir / "0002-second.sql", "w") as f:
+            f.write("CREATE TABLE test2 (id INTEGER PRIMARY KEY);")
+        
+        # Run in dry run mode
+        result = runner.invoke(
+            app, ["--db", str(db_path), "--migrations", str(migrations_dir), "--dry-run"]
+        )
+        
+        # Check output
+        assert result.exit_code == 0
+        assert "Dry run: Would apply 2 migrations" in result.stdout
+        assert "Would apply migration 1: 0001-first.sql" in result.stdout
+        assert "Would apply migration 2: 0002-second.sql" in result.stdout
+        
+        # Verify that no changes were actually made
+        conn = sqlite3.connect(db_path)
+        
+        # Version should still be 0
+        cursor = conn.execute("SELECT version FROM _meta")
+        assert cursor.fetchone()[0] == 0
+        
+        # No tables should have been created
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('test1', 'test2')"
+        )
+        assert len(cursor.fetchall()) == 0
         
         conn.close()
 

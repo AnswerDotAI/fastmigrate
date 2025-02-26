@@ -4,6 +4,7 @@ import os
 import sqlite3
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -13,6 +14,7 @@ from fastmigrate.core import (
     set_db_version,
     extract_version_from_filename,
     get_migration_scripts,
+    run_migrations,
 )
 
 
@@ -132,3 +134,120 @@ def test_get_migration_scripts_duplicate_version():
             get_migration_scripts(temp_dir)
         
         assert "Duplicate migration version" in str(excinfo.value)
+
+
+def test_interactive_mode():
+    """Test interactive migration with user input."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        db_path = temp_dir_path / "test.db"
+        migrations_dir = temp_dir_path / "migrations"
+        migrations_dir.mkdir()
+        
+        # Create a database with version 0
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            CREATE TABLE _meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+        conn.commit()
+        conn.close()
+        
+        # Create migration scripts
+        with open(migrations_dir / "0001-first.sql", "w") as f:
+            f.write("CREATE TABLE test1 (id INTEGER PRIMARY KEY);")
+        
+        with open(migrations_dir / "0002-second.sql", "w") as f:
+            f.write("CREATE TABLE test2 (id INTEGER PRIMARY KEY);")
+        
+        with open(migrations_dir / "0003-third.sql", "w") as f:
+            f.write("CREATE TABLE test3 (id INTEGER PRIMARY KEY);")
+        
+        # Test case 1: User accepts all migrations
+        with patch('builtins.input', side_effect=['y', 'y', 'y']):
+            success = run_migrations(str(db_path), str(migrations_dir), interactive=True)
+            assert success is True
+            
+            # All tables should be created
+            conn = sqlite3.connect(db_path)
+            cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+            assert cursor.fetchone()[0] == 3
+            
+            tables = [
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('test1', 'test2', 'test3')"
+                ).fetchall()
+            ]
+            assert sorted(tables) == ['test1', 'test2', 'test3']
+            conn.close()
+        
+        # Reset database for next test
+        os.remove(db_path)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            CREATE TABLE _meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+        conn.commit()
+        conn.close()
+        
+        # Test case 2: User skips second migration
+        with patch('builtins.input', side_effect=['y', 'n', 'y']):
+            success = run_migrations(str(db_path), str(migrations_dir), interactive=True)
+            assert success is True
+            
+            # First and third tables should be created, but not second
+            conn = sqlite3.connect(db_path)
+            cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+            assert cursor.fetchone()[0] == 3  # Version is still 3 (highest applied)
+            
+            tables = [
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('test1', 'test2', 'test3')"
+                ).fetchall()
+            ]
+            assert sorted(tables) == ['test1', 'test3']  # test2 should be missing
+            conn.close()
+        
+        # Reset database for next test
+        os.remove(db_path)
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            """
+            CREATE TABLE _meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL DEFAULT 0
+            )
+            """
+        )
+        conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+        conn.commit()
+        conn.close()
+        
+        # Test case 3: User quits during migration
+        with patch('builtins.input', side_effect=['y', 'q']):
+            success = run_migrations(str(db_path), str(migrations_dir), interactive=True)
+            assert success is False
+            
+            # Only first table should be created
+            conn = sqlite3.connect(db_path)
+            cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+            assert cursor.fetchone()[0] == 1  # Version should be 1
+            
+            tables = [
+                row[0] for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name IN ('test1', 'test2', 'test3')"
+                ).fetchall()
+            ]
+            assert tables == ['test1']  # Only test1 should exist
+            conn.close()
