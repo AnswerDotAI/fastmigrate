@@ -36,8 +36,6 @@ def run_cli_migration(
     db: str, 
     migrations: str, 
     config_path: str,
-    dry_run: bool,
-    interactive: bool,
     show_version: bool = False,
     create_db: bool = False
 ) -> None:
@@ -73,7 +71,7 @@ def run_cli_migration(
         typer.echo(f"Created new SQLite database at: {db_path}")
     
     # Run migrations
-    success = run_migrations(db_path, migrations_path, dry_run=dry_run, interactive=interactive)
+    success = run_migrations(db_path, migrations_path)
     if not success:
         sys.exit(1)
 
@@ -90,12 +88,6 @@ def main(
     config_path: str = typer.Option(
         ".fastmigrate", "--config", help="Path to config file (default: .fastmigrate)"
     ),
-    dry_run: bool = typer.Option(
-        False, "--dry-run", help="Show which migrations would be run without executing them"
-    ),
-    interactive: bool = typer.Option(
-        False, "--interactive", help="Prompt for confirmation before each migration (yes or quit only)"
-    ),
     create_db: bool = typer.Option(
         False, "--createdb", help="Create the database file if it doesn't exist"
     ),
@@ -107,7 +99,7 @@ def main(
     
     Paths can be provided via CLI options or read from config file.
     """
-    run_cli_migration(db, migrations, config_path, dry_run, interactive, version, create_db)
+    run_cli_migration(db, migrations, config_path, version, create_db)
 
 # This function is our CLI entry point (called when the user runs 'fastmigrate')
 def main_wrapper():
