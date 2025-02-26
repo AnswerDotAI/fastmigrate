@@ -164,9 +164,8 @@ def test_run_migrations_failed():
 
 def test_testsuite_a():
     """Test running migrations from testsuite_a."""
-    # Get the path to the test suite
-    testsuite_dir = Path(__file__).parent.parent / "testsuites" / "testsuite_a"
-    migrations_dir = testsuite_dir / "migrations"
+    # Get the path to the migrations directory
+    migrations_dir = Path(__file__).parent / "test_migrations" / "migrations"
     
     with tempfile.TemporaryDirectory() as temp_dir:
         # Create a test database

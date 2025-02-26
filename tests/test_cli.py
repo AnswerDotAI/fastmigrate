@@ -15,8 +15,8 @@ from fastmigrate.cli import app
 
 runner = CliRunner()
 
-# Path to the test suite
-TESTSUITE_A_DIR = Path(__file__).parent.parent / "testsuites" / "testsuite_a"
+# Path to the test migrations directory
+CLI_MIGRATIONS_DIR = Path(__file__).parent / "test_cli"
 
 
 def test_cli_help():
@@ -29,25 +29,27 @@ def test_cli_help():
 def test_cli_defaults():
     """Test CLI with default arguments."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Change to temp directory so defaults resolve relative to it
-        original_dir = Path.cwd()
+        # Create paths in the temporary directory
         temp_dir_path = Path(temp_dir)
+        migrations_path = temp_dir_path / "migrations"
+        data_path = temp_dir_path / "data"
+        migrations_path.mkdir()
+        data_path.mkdir()
+        
+        # Create a test migration
+        with open(migrations_path / "0001-test.sql", "w") as f:
+            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
+        
+        # Create a config file
+        with open(temp_dir_path / ".fastmigrate", "w") as f:
+            f.write("[paths]\ndb = data/database.db\nmigrations = migrations")
+        
+        # Store original directory and change to temp directory
+        # so defaults resolve relative to it
+        original_dir = os.getcwd()
         os.chdir(temp_dir_path)
         
         try:
-            # Create migrations directory with a test migration
-            migrations_path = temp_dir_path / "migrations"
-            data_path = temp_dir_path / "data"
-            migrations_path.mkdir()
-            data_path.mkdir()
-            
-            with open(migrations_path / "0001-test.sql", "w") as f:
-                f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
-            
-            # Create a config file
-            with open(temp_dir_path / ".fastmigrate", "w") as f:
-                f.write("[paths]\ndb = data/database.db\nmigrations = migrations")
-            
             # Run the CLI
             with patch("sys.argv", ["fastmigrate"]):
                 result = runner.invoke(app)
@@ -68,7 +70,7 @@ def test_cli_defaults():
             conn.close()
         
         finally:
-            # Return to original directory
+            # ALWAYS return to original directory, even if test fails
             os.chdir(original_dir)
 
 
@@ -213,7 +215,7 @@ def test_cli_with_testsuite_a():
         # Run the CLI with explicit paths to the test suite
         result = runner.invoke(app, [
             "--db", str(db_path),
-            "--migrations", str(TESTSUITE_A_DIR / "migrations")
+            "--migrations", str(CLI_MIGRATIONS_DIR / "migrations")
         ])
         
         assert result.exit_code == 0

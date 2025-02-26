@@ -1,14 +1,30 @@
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *.so
 *.egg
+*$py.class
+
+# Distribution / packaging
 *.egg-info/
 dist/
 build/
 test_dir/
+
+# Unit test / coverage reports
 .coverage
+.pytest_cache/
 htmlcov/
 
 # Database files
 data/
 *.db
+*.db.backup
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store

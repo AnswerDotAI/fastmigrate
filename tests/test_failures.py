@@ -11,8 +11,8 @@ from fastmigrate.cli import app
 from fastmigrate.core import run_migrations
 
 
-# Path to the failure test suite
-TESTSUITE_FAILURE_DIR = Path(__file__).parent.parent / "testsuites" / "testsuite_failure"
+# Path to the migrations directory
+FAILURES_DIR = Path(__file__).parent / "test_failures"
 runner = CliRunner()
 
 
@@ -20,7 +20,7 @@ def test_sql_failure():
     """Test handling of SQL script failure."""
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
-        migrations_dir = TESTSUITE_FAILURE_DIR / "migrations"
+        migrations_dir = FAILURES_DIR / "migrations"
         
         # Run migrations - should fail on the second migration
         result = run_migrations(str(db_path), str(migrations_dir))
@@ -56,7 +56,7 @@ def test_cli_sql_failure():
         # Run the CLI with path to the failure test suite
         result = runner.invoke(app, [
             "--db", str(db_path),
-            "--migrations", str(TESTSUITE_FAILURE_DIR / "migrations")
+            "--migrations", str(FAILURES_DIR / "migrations")
         ])
         
         # CLI should exit with non-zero code
@@ -163,12 +163,12 @@ def test_testsuite_failure_cli():
             migrations_dir.mkdir()
             
             # Copy the successful first migration
-            with open(TESTSUITE_FAILURE_DIR / "migrations" / "0001-initial-setup.sql", "r") as src:
+            with open(FAILURES_DIR / "migrations" / "0001-initial-setup.sql", "r") as src:
                 with open(migrations_dir / "0001-initial-setup.sql", "w") as dst:
                     dst.write(src.read())
             
             # Copy the specific failure migration
-            with open(TESTSUITE_FAILURE_DIR / "migrations" / migration["file"], "r") as src:
+            with open(FAILURES_DIR / "migrations" / migration["file"], "r") as src:
                 with open(migrations_dir / migration["file"], "w") as dst:
                     dst.write(src.read())
             

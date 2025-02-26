@@ -12,8 +12,8 @@ from fastmigrate.cli import app
 from fastmigrate.core import run_migrations
 
 
-# Path to the selective test suite
-TESTSUITE_SELECTIVE_DIR = Path(__file__).parent.parent / "testsuites" / "testsuite_selective"
+# Path to the selective migrations directory
+SELECTIVE_DIR = Path(__file__).parent / "test_selective_migrations"
 runner = CliRunner()
 
 
@@ -25,7 +25,7 @@ def test_selective_migrations_core():
     """
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
-        migrations_dir = TESTSUITE_SELECTIVE_DIR / "migrations"
+        migrations_dir = SELECTIVE_DIR / "migrations"
         
         # First run: should apply all migrations (0001 through 0010)
         assert run_migrations(str(db_path), str(migrations_dir)) is True
@@ -165,7 +165,7 @@ def test_selective_migrations_with_gaps():
     """Test that migrations with gaps in version numbers work correctly."""
     with tempfile.TemporaryDirectory() as temp_dir:
         db_path = Path(temp_dir) / "test.db"
-        migrations_dir = TESTSUITE_SELECTIVE_DIR / "migrations"
+        migrations_dir = SELECTIVE_DIR / "migrations"
         
         # Run migrations
         assert run_migrations(str(db_path), str(migrations_dir)) is True
