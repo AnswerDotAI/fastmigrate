@@ -8,10 +8,15 @@ Notes on the dev experience so far:
 
 - Benefited from prompting regarding more test cases
 - GOt list of suggestions
-- Benefited from prompting regarding rollback
+- Benefited from prompting regarding rollback. would have tried overly complex strategy
+- Needed some help with git rebase
+
+
 
 thoughts:
 - tests pass. but who tests the tests?
+
+cheap worker / expensive verifier
 
 
 ## Notes on work to do, as of commit b1b061d
@@ -38,10 +43,13 @@ Right now, there is a lot of code which handles the db version value, and ensure
 Does sqlite have primitives which can enforce that invariant automatically and reduce the amount of code needed.
 
 
+
 ## Improvements to consider after 2380fe0
 
 - [x]  add rollback for failed migrations
 - [x]  add interactive mode
 - [x]  add dry-run mode
 - [x]  add better logging
+
+
 
