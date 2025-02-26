@@ -160,3 +160,42 @@ def test_run_migrations_failed():
         assert cursor.fetchone()[0] == 1
         
         conn.close()
+
+
+def test_testsuite_a():
+    """Test running migrations from testsuite_a."""
+    # Get the path to the test suite
+    testsuite_dir = Path(__file__).parent.parent / "testsuites" / "testsuite_a"
+    migrations_dir = testsuite_dir / "migrations"
+    
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a test database
+        db_path = Path(temp_dir) / "test.db"
+        
+        # Run migrations
+        assert run_migrations(str(db_path), str(migrations_dir)) is True
+        
+        # Check the database changes
+        conn = sqlite3.connect(db_path)
+        
+        # Version should be 4 (all migrations applied)
+        cursor = conn.execute("SELECT version FROM _meta")
+        assert cursor.fetchone()[0] == 4
+        
+        # Verify users table
+        cursor = conn.execute("SELECT COUNT(*) FROM users")
+        assert cursor.fetchone()[0] == 3
+        
+        # Verify posts table
+        cursor = conn.execute("SELECT COUNT(*) FROM posts")
+        assert cursor.fetchone()[0] == 3
+        
+        # Verify tags table
+        cursor = conn.execute("SELECT COUNT(*) FROM tags")
+        assert cursor.fetchone()[0] == 3
+        
+        # Verify post_tags table
+        cursor = conn.execute("SELECT COUNT(*) FROM post_tags")
+        assert cursor.fetchone()[0] == 5
+        
+        conn.close()

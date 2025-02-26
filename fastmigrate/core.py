@@ -10,35 +10,101 @@ from typing import Dict, List, Optional, Tuple
 
 
 def ensure_meta_table(conn: sqlite3.Connection) -> None:
-    """Create the _meta table if it doesn't exist."""
-    conn.execute(
+    """Create the _meta table if it doesn't exist, with a single row constraint.
+    
+    Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
+    This ensures we can only have one row in the table.
+    """
+    # Check if _meta table exists
+    cursor = conn.execute(
         """
-        CREATE TABLE IF NOT EXISTS _meta (
-            version INTEGER NOT NULL
-        )
+        SELECT name, sql FROM sqlite_master 
+        WHERE type='table' AND name='_meta'
         """
     )
-    # Check if there's a row and insert version 0 if not
-    cursor = conn.execute("SELECT COUNT(*) FROM _meta")
-    if cursor.fetchone()[0] == 0:
-        conn.execute("INSERT INTO _meta (version) VALUES (0)")
-    # Ensure there's only one row
-    cursor = conn.execute("SELECT COUNT(*) FROM _meta")
-    if cursor.fetchone()[0] > 1:
-        conn.execute("DELETE FROM _meta")
-        conn.execute("INSERT INTO _meta (version) VALUES (0)")
-    conn.commit()
+    row = cursor.fetchone()
+    
+    if row is None:
+        # Table doesn't exist, create new format
+        with conn:
+            conn.execute(
+                """
+                CREATE TABLE _meta (
+                    id INTEGER PRIMARY KEY CHECK (id = 1),
+                    version INTEGER NOT NULL DEFAULT 0
+                )
+                """
+            )
+            conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+    
+    elif "id" not in row[1]:
+        # Table exists in old format, migrate to new format
+        try:
+            # Get current version from old format
+            cursor = conn.execute("SELECT version FROM _meta LIMIT 1")
+            result = cursor.fetchone()
+            current_version = result[0] if result else 0
+            
+            # Create a new table with the correct schema
+            try:
+                # Try to handle migration in a single atomic operation
+                conn.execute("ALTER TABLE _meta RENAME TO _meta_old")
+                conn.execute(
+                    """
+                    CREATE TABLE _meta (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        version INTEGER NOT NULL DEFAULT 0
+                    )
+                    """
+                )
+                conn.execute("INSERT INTO _meta (id, version) VALUES (1, ?)", (current_version,))
+                conn.execute("DROP TABLE _meta_old")
+                conn.commit()
+            except:
+                # If an error occurred, roll back
+                conn.rollback()
+        except Exception as e:
+            print(f"Error migrating _meta table: {e}", file=sys.stderr)
+            # If migration fails, create a new table with version 0
+            with conn:
+                conn.execute("DROP TABLE IF EXISTS _meta")
+                conn.execute(
+                    """
+                    CREATE TABLE _meta (
+                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        version INTEGER NOT NULL DEFAULT 0
+                    )
+                    """
+                )
+                conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+    
+    # If table exists in new format, do nothing
 
 
 def get_db_version(conn: sqlite3.Connection) -> int:
     """Get the current database version."""
-    cursor = conn.execute("SELECT version FROM _meta LIMIT 1")
-    return cursor.fetchone()[0]
+    cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+    result = cursor.fetchone()
+    if result is None:
+        # This should never happen due to constraints, but just in case
+        ensure_meta_table(conn)
+        return 0
+    return result[0]
 
 
 def set_db_version(conn: sqlite3.Connection, version: int) -> None:
-    """Set the database version."""
-    conn.execute("UPDATE _meta SET version = ?", (version,))
+    """Set the database version.
+    
+    Uses an UPSERT pattern (INSERT OR REPLACE) to ensure we always set the 
+    version for id=1, even if the row doesn't exist yet.
+    """
+    conn.execute(
+        """
+        INSERT OR REPLACE INTO _meta (id, version) 
+        VALUES (1, ?)
+        """, 
+        (version,)
+    )
     conn.commit()
 
 
