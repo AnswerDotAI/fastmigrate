@@ -58,8 +58,7 @@ def test_cli_defaults():
         
         try:
             # Run the CLI
-            with patch("sys.argv", ["fastmigrate"]):
-                result = runner.invoke(app)
+            result = runner.invoke(app)
             
             assert result.exit_code == 0
             
@@ -220,6 +219,73 @@ def test_cli_config_file():
         assert cursor.fetchone() is not None
         
         conn.close()
+
+
+def test_cli_precedence():
+    """Test that CLI arguments take precedence over config file."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        
+        # Create multiple directories to test precedence
+        migrations_config = temp_dir_path / "config_migrations"
+        migrations_cli = temp_dir_path / "cli_migrations"
+        db_dir_config = temp_dir_path / "config_db_dir"
+        db_dir_cli = temp_dir_path / "cli_db_dir"
+        
+        migrations_config.mkdir()
+        migrations_cli.mkdir()
+        db_dir_config.mkdir()
+        db_dir_cli.mkdir()
+        
+        db_path_config = db_dir_config / "config.db"
+        db_path_cli = db_dir_cli / "cli.db"
+        config_path = temp_dir_path / "precedence.ini"
+        
+        # Create empty database files
+        for db in [db_path_config, db_path_cli]:
+            conn = sqlite3.connect(db)
+            conn.close()
+        
+        # Create different migrations in each directory
+        with open(migrations_config / "0001-config.sql", "w") as f:
+            f.write("CREATE TABLE config_table (id INTEGER PRIMARY KEY);")
+        
+        with open(migrations_cli / "0001-cli.sql", "w") as f:
+            f.write("CREATE TABLE cli_table (id INTEGER PRIMARY KEY);")
+        
+        # Create a config file with specific paths
+        with open(config_path, "w") as f:
+            f.write(f"[paths]\ndb = {db_path_config}\nmigrations = {migrations_config}")
+        
+        # Run with BOTH config file AND explicit CLI args
+        # CLI args should take precedence
+        result = runner.invoke(app, [
+            "--config", str(config_path),
+            "--db", str(db_path_cli),
+            "--migrations", str(migrations_cli)
+        ])
+        
+        assert result.exit_code == 0
+        
+        # Verify migration was applied to the CLI database, not the config one
+        # Config DB should be untouched
+        conn_config = sqlite3.connect(db_path_config)
+        cursor = conn_config.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='config_table'")
+        assert cursor.fetchone() is None, "Config DB should not have config_table"
+        conn_config.close()
+        
+        # CLI DB should have the CLI migration applied
+        conn_cli = sqlite3.connect(db_path_cli)
+        cursor = conn_cli.execute("SELECT version FROM _meta")
+        assert cursor.fetchone()[0] == 1, "CLI DB should have version 1"
+        
+        cursor = conn_cli.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='cli_table'")
+        assert cursor.fetchone() is not None, "CLI DB should have cli_table"
+        
+        cursor = conn_cli.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='config_table'")
+        assert cursor.fetchone() is None, "CLI DB should not have config_table"
+        
+        conn_cli.close()
         
 
 

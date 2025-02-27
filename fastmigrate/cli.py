@@ -3,15 +3,19 @@
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 import sqlite3
+from typing import Dict, Any
 
 import typer
 from typer import Typer
 import configparser
-from rich.console import Console
 
 from fastmigrate.core import run_migrations, create_database_backup
+
+# Define constants - single source of truth for default values
+DEFAULT_DB = "data/database.db"
+DEFAULT_MIGRATIONS = "migrations"
+DEFAULT_CONFIG = ".fastmigrate"
 
 # Get the version number
 try:
@@ -31,34 +35,56 @@ app = Typer(
     context_settings={"help_option_names": ["-h", "--help"]}
 )
 
-# Define a shared function that contains the core migration logic
-def run_cli_migration(
-    db: str, 
-    migrations: str, 
-    config_path: str,
-    show_version: bool = False,
-    create_db: bool = False,
-    backup: bool = False
+# This command can be used by tests and is also exposed via CLI
+@app.callback(invoke_without_command=True)
+def main(
+    db: str = typer.Option(
+        DEFAULT_DB, "--db", help="Path to the SQLite database file"
+    ),
+    migrations: str = typer.Option(
+        DEFAULT_MIGRATIONS, "--migrations", help="Path to the migrations directory", 
+        dir_okay=True, file_okay=False
+    ),
+    config_path: str = typer.Option(
+        DEFAULT_CONFIG, "--config", help="Path to config file (default: .fastmigrate)"
+    ),
+    create_db: bool = typer.Option(
+        False, "--createdb", help="Create the database file if it doesn't exist"
+    ),
+    backup: bool = typer.Option(
+        False, "--backup", help="Create a timestamped backup of the database before running migrations"
+    ),
+    version: bool = typer.Option(
+        False, "--version", "-v", help="Show version and exit"
+    ),
 ) -> None:
-    """Run the migration process with CLI parameters."""
-    # Handle version flag
-    if show_version:
+    """Run SQLite database migrations.
+    
+    FastMigrate applies migration scripts to a SQLite database in sequential order.
+    It keeps track of which migrations have been applied using a _meta table
+    in the database, and only runs scripts that have not yet been applied.
+    
+    Paths can be provided via CLI options or config file, with CLI options taking precedence.
+    """
+    # Handle version flag first
+    if version:
         typer.echo(f"FastMigrate version: {VERSION}")
         return
-        
+    
+    # Read config file paths (if config file exists)
+    config_file = Path(config_path)
     db_path = db
     migrations_path = migrations
     
-    # Read from config file if it exists
-    config_file = Path(config_path)
+    # Apply config file settings only if CLI values are defaults
     if config_file.exists():
         cfg = configparser.ConfigParser()
         cfg.read(config_file)
         if "paths" in cfg:
-            # Config file overrides defaults, but CLI options override config file
-            if "db" in cfg["paths"] and db == "data/database.db":  # Only if default wasn't overridden by CLI
+            # Only use config values if CLI values are defaults
+            if "db" in cfg["paths"] and db == DEFAULT_DB:
                 db_path = cfg["paths"]["db"]
-            if "migrations" in cfg["paths"] and migrations == "migrations":  # Only if default wasn't overridden by CLI
+            if "migrations" in cfg["paths"] and migrations == DEFAULT_MIGRATIONS:
                 migrations_path = cfg["paths"]["migrations"]
     
     # Create parent directory
@@ -81,39 +107,6 @@ def run_cli_migration(
     success = run_migrations(db_path, migrations_path)
     if not success:
         sys.exit(1)
-
-# This command can be used by tests and is also exposed via CLI
-@app.callback(invoke_without_command=True)
-def main(
-    db: str = typer.Option(
-        "data/database.db", "--db", help="Path to the SQLite database file"
-    ),
-    migrations: str = typer.Option(
-        "migrations", "--migrations", help="Path to the migrations directory", 
-        dir_okay=True, file_okay=False
-    ),
-    config_path: str = typer.Option(
-        ".fastmigrate", "--config", help="Path to config file (default: .fastmigrate)"
-    ),
-    create_db: bool = typer.Option(
-        False, "--createdb", help="Create the database file if it doesn't exist"
-    ),
-    backup: bool = typer.Option(
-        False, "--backup", help="Create a timestamped backup of the database before running migrations"
-    ),
-    version: bool = typer.Option(
-        False, "--version", "-v", help="Show version and exit"
-    ),
-) -> None:
-    """Run SQLite database migrations.
-    
-    FastMigrate applies migration scripts to a SQLite database in sequential order.
-    It keeps track of which migrations have been applied using a _meta table
-    in the database, and only runs scripts that have not yet been applied.
-    
-    Paths can be provided via CLI options or read from config file.
-    """
-    run_cli_migration(db, migrations, config_path, version, create_db, backup)
 
 # This function is our CLI entry point (called when the user runs 'fastmigrate')
 def main_wrapper():
