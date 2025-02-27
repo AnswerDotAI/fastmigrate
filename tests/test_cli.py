@@ -224,6 +224,37 @@ def test_cli_config_file():
 
 
 
+def test_cli_createdb_flag():
+    """Test the --createdb flag properly initializes a database with _meta table."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        db_path = temp_dir_path / "new_db.db"
+        
+        # Verify the database doesn't exist yet
+        assert not db_path.exists()
+        
+        # Run the CLI with just the --createdb flag
+        result = runner.invoke(app, [
+            "--db", str(db_path),
+            "--createdb"
+        ])
+        
+        assert result.exit_code == 0
+        
+        # Verify database was created
+        assert db_path.exists()
+        
+        # Verify the _meta table exists with version 0
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta'")
+        assert cursor.fetchone() is not None
+        
+        cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+        assert cursor.fetchone()[0] == 0
+        
+        conn.close()
+
+
 def test_cli_with_testsuite_a():
     """Test CLI using testsuite_a."""
     with tempfile.TemporaryDirectory() as temp_dir:

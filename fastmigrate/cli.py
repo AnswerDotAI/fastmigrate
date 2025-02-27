@@ -66,10 +66,12 @@ def run_cli_migration(
     
     # Create database file if requested and it doesn't exist
     if create_db and not os.path.exists(db_path):
-        # Create an empty SQLite database
+        # Create an empty SQLite database with the _meta table
         conn = sqlite3.connect(db_path)
+        from fastmigrate.core import ensure_meta_table
+        ensure_meta_table(conn)
         conn.close()
-        typer.echo(f"Created new SQLite database at: {db_path}")
+        typer.echo(f"Created new SQLite database with _meta table at: {db_path}")
     
     # Create a backup if requested
     if backup and os.path.exists(db_path):
