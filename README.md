@@ -28,6 +28,32 @@ It will then detect every validly-named file in the migrations directory, select
   - determining if there are any migration scripts with versions higher than the db version
   - trying to run those scripts
 
+### Command Line Options
+
+1. **Basic Usage**:
+   ```
+   fastmigrate
+   ```
+   This will use the defaults, looking for migrations in `./migrations/` and the database in `./data/database.db`.
+
+2. **Specify Paths**:
+   ```
+   fastmigrate --db path/to/database.db --migrations path/to/migrations
+   ```
+
+3. **Create Database**:
+   ```
+   fastmigrate --createdb
+   ```
+   Creates an empty database with the _meta table if it doesn't exist.
+
+4. **Database Backup**:
+   ```
+   fastmigrate --backup
+   ```
+   Creates a timestamped backup of the database before running any migrations.
+   The backup file will be named `database.db.YYYYMMDD_HHMMSS.backup`.
+
 ### Important Considerations
 
 1. **Sequential Execution**: Migrations are executed in order based on their index numbers. If migration #3 fails, migrations #1-2 remain applied and the process stops.
@@ -38,5 +64,5 @@ It will then detect every validly-named file in the migrations directory, select
 
 4. **Database Locking**: During migration, the database may be locked. Applications should not attempt to access it while migrations are running.
 
-5. **Creating Empty Databases**: Using the `--createdb` flag allows you to create an empty database with the _meta table if it doesn't exist.
+5. **Backups**: For safety, you can use the `--backup` option to create a backup before running migrations.
 

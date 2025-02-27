@@ -119,6 +119,65 @@ def test_cli_explicit_paths():
         conn.close()
 
 
+def test_cli_backup_option():
+    """Test CLI with the --backup option."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        db_path = temp_dir_path / "test.db"
+        migrations_path = temp_dir_path / "migrations"
+        migrations_path.mkdir()
+        
+        # Create a database with initial data
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE initial (id INTEGER PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO initial (value) VALUES ('initial data')")
+        conn.commit()
+        conn.close()
+        
+        # Create a test migration
+        with open(migrations_path / "0001-test.sql", "w") as f:
+            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
+        
+        # Run the CLI with --backup option
+        result = runner.invoke(app, [
+            "--db", str(db_path),
+            "--migrations", str(migrations_path),
+            "--backup"
+        ])
+        
+        assert result.exit_code == 0
+        
+        # Check that a backup file was created
+        backup_files = list(temp_dir_path.glob("*.backup"))
+        assert len(backup_files) == 1
+        backup_path = backup_files[0]
+        
+        # Verify the backup has the initial data but not the migration
+        conn_backup = sqlite3.connect(backup_path)
+        
+        # Should have the initial table with data
+        cursor = conn_backup.execute("SELECT value FROM initial")
+        assert cursor.fetchone()[0] == "initial data"
+        
+        # Should NOT have the test table from the migration
+        cursor = conn_backup.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
+        assert cursor.fetchone() is None
+        
+        # But the original DB should have both tables
+        conn = sqlite3.connect(db_path)
+        
+        # Should have the initial table
+        cursor = conn.execute("SELECT value FROM initial")
+        assert cursor.fetchone()[0] == "initial data"
+        
+        # Should have the test table from the migration
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
+        assert cursor.fetchone() is not None
+        
+        conn_backup.close()
+        conn.close()
+
+
 def test_cli_config_file():
     """Test CLI with configuration from file."""
     with tempfile.TemporaryDirectory() as temp_dir:

@@ -15,6 +15,7 @@ from fastmigrate.core import (
     extract_version_from_filename,
     get_migration_scripts,
     run_migrations,
+    create_database_backup,
 )
 
 
@@ -134,3 +135,34 @@ def test_get_migration_scripts_duplicate_version():
             get_migration_scripts(temp_dir)
         
         assert "Duplicate migration version" in str(excinfo.value)
+
+
+def test_create_database_backup():
+    """Test creating a database backup."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a test database
+        db_path = os.path.join(temp_dir, "test.db")
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO test (value) VALUES ('original data')")
+        conn.commit()
+        conn.close()
+        
+        # Create a backup
+        backup_path = create_database_backup(db_path)
+        
+        # Check that the backup file exists
+        assert os.path.exists(backup_path)
+        assert backup_path.startswith(db_path)
+        assert ".backup" in backup_path
+        
+        # Verify the backup contains the same data
+        conn_backup = sqlite3.connect(backup_path)
+        cursor = conn_backup.execute("SELECT value FROM test")
+        assert cursor.fetchone()[0] == "original data"
+        conn_backup.close()
+        
+        # Test backup of non-existent database
+        non_existent_path = os.path.join(temp_dir, "nonexistent.db")
+        result = create_database_backup(non_existent_path)
+        assert result == ""

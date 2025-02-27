@@ -11,7 +11,7 @@ from typer import Typer
 import configparser
 from rich.console import Console
 
-from fastmigrate.core import run_migrations
+from fastmigrate.core import run_migrations, create_database_backup
 
 # Get the version number
 try:
@@ -37,7 +37,8 @@ def run_cli_migration(
     migrations: str, 
     config_path: str,
     show_version: bool = False,
-    create_db: bool = False
+    create_db: bool = False,
+    backup: bool = False
 ) -> None:
     """Run the migration process with CLI parameters."""
     # Handle version flag
@@ -70,6 +71,10 @@ def run_cli_migration(
         conn.close()
         typer.echo(f"Created new SQLite database at: {db_path}")
     
+    # Create a backup if requested
+    if backup and os.path.exists(db_path):
+        create_database_backup(db_path)
+    
     # Run migrations
     success = run_migrations(db_path, migrations_path)
     if not success:
@@ -91,6 +96,9 @@ def main(
     create_db: bool = typer.Option(
         False, "--createdb", help="Create the database file if it doesn't exist"
     ),
+    backup: bool = typer.Option(
+        False, "--backup", help="Create a timestamped backup of the database before running migrations"
+    ),
     version: bool = typer.Option(
         False, "--version", "-v", help="Show version and exit"
     ),
@@ -103,7 +111,7 @@ def main(
     
     Paths can be provided via CLI options or read from config file.
     """
-    run_cli_migration(db, migrations, config_path, version, create_db)
+    run_cli_migration(db, migrations, config_path, version, create_db, backup)
 
 # This function is our CLI entry point (called when the user runs 'fastmigrate')
 def main_wrapper():

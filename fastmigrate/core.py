@@ -2,10 +2,12 @@
 
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -216,6 +218,34 @@ def execute_shell_script(db_path: str, script_path: str) -> bool:
         console.print(f"[bold red]Error[/bold red] executing shell script {script_path}:")
         console.print(e.stderr.decode(), style="red")
         return False
+
+
+def create_database_backup(db_path: str) -> str:
+    """Create a backup of the SQLite database file.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        str: Path to the backup file
+    """
+    # Only proceed if the database exists
+    if not os.path.exists(db_path):
+        console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
+        return ""
+        
+    # Create a timestamped backup filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_path = f"{db_path}.{timestamp}.backup"
+    
+    # Create the backup
+    try:
+        shutil.copy2(db_path, backup_path)
+        console.print(f"[green]Database backup created:[/green] {backup_path}")
+        return backup_path
+    except Exception as e:
+        console.print(f"[bold red]Error creating backup:[/bold red] {e}")
+        return ""
 
 
 def execute_migration_script(db_path: str, script_path: str) -> bool:
