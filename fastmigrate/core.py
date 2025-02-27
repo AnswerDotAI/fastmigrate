@@ -221,7 +221,10 @@ def execute_shell_script(db_path: str, script_path: str) -> bool:
 
 
 def create_database_backup(db_path: str) -> str:
-    """Create a backup of the SQLite database file.
+    """Create a backup of the SQLite database file using SQLite's built-in backup command.
+    
+    Uses the '.backup' SQLite command which ensures a consistent backup even if the
+    database is in the middle of a transaction.
     
     Args:
         db_path: Path to the SQLite database file
@@ -238,9 +241,28 @@ def create_database_backup(db_path: str) -> str:
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = f"{db_path}.{timestamp}.backup"
     
-    # Create the backup
+    # Create the backup using sqlite3 command line
     try:
-        shutil.copy2(db_path, backup_path)
+        # Construct the command that will be executed
+        sqlite_command = f"sqlite3 '{db_path}' \".backup '{backup_path}'\""
+        console.print(f"Executing: {sqlite_command}")
+        
+        # Execute the SQLite backup command
+        result = subprocess.run(
+            sqlite_command,
+            shell=True,
+            capture_output=True,
+            text=True
+        )
+        
+        # Check for errors
+        if result.returncode != 0:
+            raise Exception(f"SQLite backup command failed: {result.stderr}")
+        
+        # Verify the backup file was created
+        if not os.path.exists(backup_path):
+            raise Exception("Backup file was not created")
+            
         console.print(f"[green]Database backup created:[/green] {backup_path}")
         return backup_path
     except Exception as e:
