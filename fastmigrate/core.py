@@ -33,7 +33,7 @@ def ensure_meta_table(conn: sqlite3.Connection) -> None:
     row = cursor.fetchone()
     
     if row is None:
-        # Table doesn't exist, create new format
+        # Table doesn't exist, create it with version 0
         with conn:
             conn.execute(
                 """
@@ -44,49 +44,6 @@ def ensure_meta_table(conn: sqlite3.Connection) -> None:
                 """
             )
             conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
-    
-    elif "id" not in row[1]:
-        # Table exists in old format, migrate to new format
-        try:
-            # Get current version from old format
-            cursor = conn.execute("SELECT version FROM _meta LIMIT 1")
-            result = cursor.fetchone()
-            current_version = result[0] if result else 0
-            
-            # Create a new table with the correct schema
-            try:
-                # Try to handle migration in a single atomic operation
-                conn.execute("ALTER TABLE _meta RENAME TO _meta_old")
-                conn.execute(
-                    """
-                    CREATE TABLE _meta (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        version INTEGER NOT NULL DEFAULT 0
-                    )
-                    """
-                )
-                conn.execute("INSERT INTO _meta (id, version) VALUES (1, ?)", (current_version,))
-                conn.execute("DROP TABLE _meta_old")
-                conn.commit()
-            except Exception:
-                # If an error occurred, roll back
-                conn.rollback()
-        except Exception as e:
-            print(f"Error migrating _meta table: {e}", file=sys.stderr)
-            # If migration fails, create a new table with version 0
-            with conn:
-                conn.execute("DROP TABLE IF EXISTS _meta")
-                conn.execute(
-                    """
-                    CREATE TABLE _meta (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
-                        version INTEGER NOT NULL DEFAULT 0
-                    )
-                    """
-                )
-                conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
-    
-    # If table exists in new format, do nothing
 
 
 def get_db_version(conn: sqlite3.Connection) -> int:
