@@ -27,8 +27,13 @@ def ensure_meta_table(db_path: str) -> None:
         db_path: Path to the SQLite database
         
     Raises:
+        FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read or write to the database
     """
+    # First check if the file exists
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    
     conn = None
     try:
         conn = sqlite3.connect(db_path)
@@ -73,8 +78,13 @@ def get_db_version(db_path: str) -> int:
         int: The current database version
         
     Raises:
+        FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read the version or if _meta table doesn't exist
     """
+    # First check if the file exists
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    
     conn = None
     try:
         conn = sqlite3.connect(db_path)
@@ -103,8 +113,13 @@ def set_db_version(db_path: str, version: int) -> None:
         version: The version number to set
         
     Raises:
+        FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to write to the database
     """
+    # First check if the file exists
+    if not os.path.exists(db_path):
+        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    
     conn = None
     try:
         conn = sqlite3.connect(db_path)

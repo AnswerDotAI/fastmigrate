@@ -60,7 +60,7 @@ def test_ensure_meta_table():
         conn.close()
     
     # Test with invalid path to verify exception is raised
-    with pytest.raises(sqlite3.Error):
+    with pytest.raises(FileNotFoundError):
         ensure_meta_table("/nonexistent/path/to/db.db")
 
 
@@ -87,10 +87,10 @@ def test_get_set_db_version():
         conn.close()
     
     # Test with nonexistent database to verify exceptions
-    with pytest.raises(sqlite3.Error):
+    with pytest.raises(FileNotFoundError):
         get_db_version("/nonexistent/path/to/db.db")
         
-    with pytest.raises(sqlite3.Error):
+    with pytest.raises(FileNotFoundError):
         set_db_version("/nonexistent/path/to/db.db", 50)
 
 
