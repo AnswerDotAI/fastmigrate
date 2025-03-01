@@ -48,16 +48,15 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
         
         # Create an initial empty database
         self.conn = sqlite3.connect(self.db_path)
+        self.conn.close()
         
         # Initialize the _meta table (should be version 0)
-        ensure_meta_table(self.conn)
+        ensure_meta_table(self.db_path)
         
         # Verify we're starting with version 0
-        self.assertEqual(get_db_version(self.conn), 0, 
+        self.assertEqual(get_db_version(self.db_path), 0, 
                          "Database should start with version 0")
         
-        # Close the connection - will reopen as needed in tests
-        self.conn.close()
         self.conn = None
         
     def tearDown(self):
@@ -96,7 +95,7 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
         # Directly check the database state before running migrations
         print("\nSTEP 2: Check initial database state")
         self.conn = sqlite3.connect(self.db_path)
-        db_version = get_db_version(self.conn)
+        db_version = get_db_version(self.db_path)
         self.assertEqual(db_version, 0, 
                          "Initial DB version should be 0")
         
@@ -119,7 +118,7 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
         
         # Open a connection and verify where we ended up
         self.conn = sqlite3.connect(self.db_path)
-        db_version = get_db_version(self.conn)
+        db_version = get_db_version(self.db_path)
         
         # We should have successfully applied migrations 1-4
         self.assertEqual(db_version, 4, 
@@ -208,7 +207,7 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
         
         # Verify the DB version
         self.conn = sqlite3.connect(self.db_path)
-        db_version = get_db_version(self.conn)
+        db_version = get_db_version(self.db_path)
         self.assertEqual(db_version, 5, 
                          "After running fixed migrations, DB version should be 5")
         

@@ -92,12 +92,17 @@ def main(
     
     # Create database file if requested and it doesn't exist
     if create_db and not os.path.exists(db_path):
-        # Create an empty SQLite database with the _meta table
-        conn = sqlite3.connect(db_path)
-        from fastmigrate.core import ensure_meta_table
-        ensure_meta_table(conn)
-        conn.close()
-        typer.echo(f"Created new SQLite database with _meta table at: {db_path}")
+        # Create an empty file
+        sqlite3.connect(db_path).close()
+        
+        # Initialize the meta table
+        try:
+            from fastmigrate.core import ensure_meta_table
+            ensure_meta_table(db_path)
+            typer.echo(f"Created new SQLite database with _meta table at: {db_path}")
+        except sqlite3.Error as e:
+            typer.echo(f"Error creating database: {e}")
+            sys.exit(1)
     
     # Create a backup if requested
     if backup and os.path.exists(db_path):

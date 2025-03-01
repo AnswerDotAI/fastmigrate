@@ -17,60 +17,113 @@ from rich.console import Console
 console = Console()
 
 
-def ensure_meta_table(conn: sqlite3.Connection) -> None:
+def ensure_meta_table(db_path: str) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
     This ensures we can only have one row in the table.
-    """
-    # Check if _meta table exists
-    cursor = conn.execute(
-        """
-        SELECT name, sql FROM sqlite_master 
-        WHERE type='table' AND name='_meta'
-        """
-    )
-    row = cursor.fetchone()
     
-    if row is None:
-        # Table doesn't exist, create it with version 0
-        with conn:
-            conn.execute(
-                """
-                CREATE TABLE _meta (
-                    id INTEGER PRIMARY KEY CHECK (id = 1),
-                    version INTEGER NOT NULL DEFAULT 0
-                )
-                """
-            )
-            conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+    Args:
+        db_path: Path to the SQLite database
+        
+    Raises:
+        sqlite3.Error: If unable to read or write to the database
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        # Check if _meta table exists
+        cursor = conn.execute(
+            """
+            SELECT name, sql FROM sqlite_master 
+            WHERE type='table' AND name='_meta'
+            """
+        )
+        row = cursor.fetchone()
+        
+        if row is None:
+            # Table doesn't exist, create it with version 0
+            try:
+                with conn:
+                    conn.execute(
+                        """
+                        CREATE TABLE _meta (
+                            id INTEGER PRIMARY KEY CHECK (id = 1),
+                            version INTEGER NOT NULL DEFAULT 0
+                        )
+                        """
+                    )
+                    conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+            except sqlite3.Error as e:
+                raise sqlite3.Error(f"Failed to create _meta table: {e}")
+    except sqlite3.Error as e:
+        raise sqlite3.Error(f"Failed to access database: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
-def get_db_version(conn: sqlite3.Connection) -> int:
-    """Get the current database version."""
-    cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
-    result = cursor.fetchone()
-    if result is None:
-        # This should never happen due to constraints, but just in case
-        ensure_meta_table(conn)
-        return 0
-    return result[0]
+def get_db_version(db_path: str) -> int:
+    """Get the current database version.
+    
+    Args:
+        db_path: Path to the SQLite database
+        
+    Returns:
+        int: The current database version
+        
+    Raises:
+        sqlite3.Error: If unable to read the version or if _meta table doesn't exist
+    """
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+        result = cursor.fetchone()
+        if result is None:
+            raise sqlite3.Error("No version found in _meta table")
+        return int(result[0])
+    except sqlite3.OperationalError:
+        raise sqlite3.Error("_meta table does not exist")
+    except sqlite3.Error as e:
+        raise sqlite3.Error(f"Failed to get database version: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
-def set_db_version(conn: sqlite3.Connection, version: int) -> None:
+def set_db_version(db_path: str, version: int) -> None:
     """Set the database version.
     
     Uses an UPSERT pattern (INSERT OR REPLACE) to ensure we always set the 
     version for id=1, even if the row doesn't exist yet.
+    
+    Args:
+        db_path: Path to the SQLite database
+        version: The version number to set
+        
+    Raises:
+        sqlite3.Error: If unable to write to the database
     """
-    conn.execute(
-        """
-        INSERT OR REPLACE INTO _meta (id, version) 
-        VALUES (1, ?)
-        """, 
-        (version,)
-    )
-    conn.commit()
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        try:
+            with conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO _meta (id, version) 
+                    VALUES (1, ?)
+                    """, 
+                    (version,)
+                )
+        except sqlite3.Error as e:
+            raise sqlite3.Error(f"Failed to set version: {e}")
+    except sqlite3.Error as e:
+        raise sqlite3.Error(f"Failed to access database: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 def extract_version_from_filename(filename: str) -> Optional[int]:
@@ -267,14 +320,12 @@ def run_migrations(
         console.print("The database file must exist before running migrations.")
         return False
     
-    # Connect to the database
-    conn = sqlite3.connect(db_path)
     try:
         # Ensure _meta table exists
-        ensure_meta_table(conn)
+        ensure_meta_table(db_path)
         
         # Get current version
-        current_version = get_db_version(conn)
+        current_version = get_db_version(db_path)
         
         # Get all migration scripts
         try:
@@ -307,10 +358,7 @@ def run_migrations(
             migration_start = time.time()
             console.print(f"[blue]Applying[/blue] migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
             
-            # Close the connection before running the script
             # Each script will open its own connection
-            conn.close()
-            conn = None
             
             # Execute the migration script
             success = execute_migration_script(db_path, script_path)
@@ -332,9 +380,8 @@ def run_migrations(
             stats["total_time"] += migration_duration
             stats["applied"] += 1
             
-            # Reopen connection and update version
-            conn = sqlite3.connect(db_path)
-            set_db_version(conn, version)
+            # Update version
+            set_db_version(db_path, version)
             console.print(f"[green]✓[/green] Database updated to version [bold]{version}[/bold] [dim]({migration_duration:.2f}s)[/dim]")
         
         # Show summary of successful run
@@ -347,6 +394,9 @@ def run_migrations(
         
         return True
     
-    finally:
-        if conn:
-            conn.close()
+    except sqlite3.Error as e:
+        console.print(f"[bold red]Database error:[/bold red] {e}")
+        return False
+    except Exception as e:
+        console.print(f"[bold red]Error:[/bold red] {e}")
+        return False
