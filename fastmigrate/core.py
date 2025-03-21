@@ -16,6 +16,23 @@ from rich.console import Console
 # Initialize Rich console
 console = Console()
 
+def ensure_versioned_db(db_path:str) -> int:
+    """Creates the db file if needed. Ensures it has version.
+
+    If no db exists, creates an EMPTY db with version 0. (This is ready
+    to be initalized by migration script with version 1.)
+
+    If a db exists, which already has a version, does nothing.
+
+    If a db exists, without a version, raises an error.
+    """
+    if not os.path.exists(db_path):
+        os.makedirs(os.path.dirname(os.path.abspath(db_path)),exist_ok=True)
+        sqlite3.connect(db_path).close()
+        ensure_meta_table(db_path)
+        return 0
+    else:
+        return get_db_version(db_path)
 
 def ensure_meta_table(db_path: str) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
