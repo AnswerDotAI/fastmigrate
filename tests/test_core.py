@@ -173,3 +173,34 @@ def test_create_database_backup():
         non_existent_path = os.path.join(temp_dir, "nonexistent.db")
         result = create_database_backup(non_existent_path)
         assert result == ""
+
+
+def test_run_migrations_on_unversioned_db():
+    """Test that run_migrations fails on an unversioned database."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create migrations directory
+        migrations_dir = os.path.join(temp_dir, "migrations")
+        os.makedirs(migrations_dir)
+        
+        # Create a simple migration
+        with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
+            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
+        
+        # Create a database without initializing it (no _meta table)
+        db_path = os.path.join(temp_dir, "test.db")
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
+        # Run migrations - should fail because the database is not versioned
+        assert run_migrations(db_path, migrations_dir) is False
+        
+        # Verify no table was created (migration did not run)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
+        assert cursor.fetchone() is None, "Migration should not have run on unversioned database"
+        
+        # Also verify there's no _meta table (run_migrations shouldn't create one)
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta'")
+        assert cursor.fetchone() is None, "run_migrations should not have created a _meta table"
+        
+        conn.close()

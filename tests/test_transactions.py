@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from fastmigrate.core import run_migrations
+from fastmigrate.core import run_migrations, ensure_meta_table
 
 
 def test_migration_success():
@@ -20,6 +20,9 @@ def test_migration_success():
         # Create empty database file
         conn = sqlite3.connect(db_path)
         conn.close()
+        
+        # Initialize the database with _meta table
+        ensure_meta_table(str(db_path))
         
         # Create first migration
         with open(migrations_dir / "0001-initial.sql", "w") as f:
@@ -81,6 +84,9 @@ def test_migration_failure():
         # Create empty database file
         conn = sqlite3.connect(db_path)
         conn.close()
+        
+        # Initialize the database with _meta table
+        ensure_meta_table(str(db_path))
         
         # Create first migration
         with open(migrations_dir / "0001-initial.sql", "w") as f:
