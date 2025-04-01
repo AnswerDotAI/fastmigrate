@@ -16,6 +16,8 @@ from rich.console import Console
 # Initialize Rich console
 console = Console()
 
+__all__ = ["run_migrations", "ensure_versioned_db", "ensure_meta_table", "get_db_version", "set_db_version", "create_database_backup"]
+
 def ensure_versioned_db(db_path:str) -> int:
     """Creates the db file if needed. Ensures it has version.
 
