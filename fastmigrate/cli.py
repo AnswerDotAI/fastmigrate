@@ -108,8 +108,8 @@ def main(
     if backup and os.path.exists(db_path):
         create_database_backup(db_path)
     
-    # Run migrations
-    success = run_migrations(db_path, migrations_path)
+    # Run migrations with verbose=True for CLI usage
+    success = run_migrations(db_path, migrations_path, verbose=True)
     if not success:
         sys.exit(1)
 

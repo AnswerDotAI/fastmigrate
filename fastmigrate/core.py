@@ -331,13 +331,15 @@ def execute_migration_script(db_path: str, script_path: str) -> bool:
 
 def run_migrations(
     db_path: str, 
-    migrations_dir: str
+    migrations_dir: str,
+    verbose: bool = False
 ) -> bool:
     """Run all pending migrations.
     
     Args:
         db_path: Path to the SQLite database file
         migrations_dir: Path to the directory containing migration scripts
+        verbose: If True, print detailed progress messages (False by default)
     
     Returns True if all migrations succeed, False otherwise.
     """
@@ -376,7 +378,8 @@ def run_migrations(
         }
         
         if not pending_migrations:
-            console.print(f"[green]Database is up to date[/green] (version {current_version})")
+            if verbose:
+                console.print(f"[green]Database is up to date[/green] (version {current_version})")
             return True
         
         # Sort migrations by version
@@ -390,7 +393,8 @@ def run_migrations(
             
             # Start timing this migration
             migration_start = time.time()
-            console.print(f"[blue]Applying[/blue] migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
+            if verbose:
+                console.print(f"[blue]Applying[/blue] migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
             
             # Each script will open its own connection
             
@@ -401,7 +405,7 @@ def run_migrations(
                 console.print(f"[bold red]Migration failed:[/bold red] {script_path}")
                 stats["failed"] += 1
                 
-                # Show summary
+                # Show summary of failure - always show errors regardless of verbose flag
                 console.print("\n[bold red]Migration Failed[/bold red]")
                 console.print(f"  • [bold]{stats['applied']}[/bold] migrations applied")
                 console.print(f"  • [bold]{stats['failed']}[/bold] migrations failed")
@@ -416,10 +420,11 @@ def run_migrations(
             
             # Update version
             set_db_version(db_path, version)
-            console.print(f"[green]✓[/green] Database updated to version [bold]{version}[/bold] [dim]({migration_duration:.2f}s)[/dim]")
+            if verbose:
+                console.print(f"[green]✓[/green] Database updated to version [bold]{version}[/bold] [dim]({migration_duration:.2f}s)[/dim]")
         
         # Show summary of successful run
-        if stats["applied"] > 0:
+        if stats["applied"] > 0 and verbose:
             total_duration = time.time() - start_time
             console.print("\n[bold green]Migration Complete[/bold green]")
             console.print(f"  • [bold]{stats['applied']}[/bold] migrations applied")
