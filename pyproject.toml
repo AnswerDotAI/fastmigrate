@@ -11,7 +11,6 @@ requires-python = ">=3.8"
 license = {text = "MIT"}
 dependencies = [
     "typer>=0.9.0",
-    "configparser>=5.0.0",
 ]
 
 [project.optional-dependencies]
