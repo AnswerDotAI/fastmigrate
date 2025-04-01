@@ -347,7 +347,7 @@ def run_migrations(
     stats = {
         "applied": 0,
         "failed": 0,
-        "total_time": 0
+        "total_time": 0.0
     }
     
     # Check if database file exists

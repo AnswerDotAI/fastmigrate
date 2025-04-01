@@ -114,7 +114,7 @@ def main(
         sys.exit(1)
 
 # This function is our CLI entry point (called when the user runs 'fastmigrate')
-def main_wrapper():
+def main_wrapper() -> None:
     """Entry point for the CLI."""
     # Simply use the app we've already defined above
     app()
