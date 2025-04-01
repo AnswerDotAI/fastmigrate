@@ -10,6 +10,7 @@ import pytest
 
 from fastmigrate.core import (
     ensure_meta_table,
+    ensure_versioned_db,
     get_db_version,
     set_db_version,
     extract_version_from_filename,
@@ -92,6 +93,68 @@ def test_get_set_db_version():
         
     with pytest.raises(FileNotFoundError):
         set_db_version("/nonexistent/path/to/db.db", 50)
+
+
+def test_ensure_versioned_db():
+    """Test ensuring a database is versioned."""
+    # Test case 1: Non-existent DB should be created and versioned
+    with tempfile.TemporaryDirectory() as temp_dir:
+        db_path = os.path.join(temp_dir, "new.db")
+        
+        # Verify the file doesn't exist yet
+        assert not os.path.exists(db_path)
+        
+        # Call ensure_versioned_db - should create the DB
+        version = ensure_versioned_db(db_path)
+        
+        # Check results
+        assert os.path.exists(db_path), "Database file should have been created"
+        assert version == 0, "Version should be 0 for a new database"
+        
+        # Verify the db structure directly
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+        assert cursor.fetchone()[0] == 0, "Version in database should be 0"
+        conn.close()
+    
+    # Test case 2: Existing versioned DB should return its version
+    with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
+        db_path = temp_file.name
+        
+        # Create a versioned database with a specific version
+        conn = sqlite3.connect(db_path)
+        conn.execute("""
+            CREATE TABLE _meta (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                version INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        conn.execute("INSERT INTO _meta (id, version) VALUES (1, 42)")
+        conn.commit()
+        conn.close()
+        
+        # Call ensure_versioned_db - should detect existing version
+        version = ensure_versioned_db(db_path)
+        
+        # Check the version was detected correctly
+        assert version == 42, "Should return existing version (42)"
+    
+    # Test case 3: Existing unversioned DB should raise an error
+    with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
+        db_path = temp_file.name
+        
+        # Create an unversioned database with some random table
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
+        conn.commit()
+        conn.close()
+        
+        # Call ensure_versioned_db - should raise a sqlite3.Error
+        with pytest.raises(sqlite3.Error) as excinfo:
+            ensure_versioned_db(db_path)
+        
+        # Verify error message indicates missing _meta table
+        assert "_meta table does not exist" in str(excinfo.value)
 
 
 def test_extract_version_from_filename():
