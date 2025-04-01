@@ -19,14 +19,14 @@ console = Console()
 __all__ = ["run_migrations", "ensure_versioned_db", "ensure_meta_table", "get_db_version", "set_db_version", "create_database_backup"]
 
 def ensure_versioned_db(db_path:str) -> int:
-    """Creates the db file if needed. Ensures it has version.
+    """Creates a versioned db, or ensures the existing db is versioned.
 
     If no db exists, creates an EMPTY db with version 0. (This is ready
     to be initalized by migration script with version 1.)
 
     If a db exists, which already has a version, does nothing.
 
-    If a db exists, without a version, raises an error.
+    If a db exists, without a version, raises an sqlite3.Error
     """
     if not os.path.exists(db_path):
         os.makedirs(os.path.dirname(os.path.abspath(db_path)),exist_ok=True)
@@ -98,7 +98,7 @@ def get_db_version(db_path: str) -> int:
         
     Raises:
         FileNotFoundError: If database file doesn't exist
-        sqlite3.Error: If unable to read the version or if _meta table doesn't exist
+        sqlite3.Error: If unable to read the db version because it is not managed
     """
     # First check if the file exists
     if not os.path.exists(db_path):
@@ -340,6 +340,10 @@ def run_migrations(
         db_path: Path to the SQLite database file
         migrations_dir: Path to the directory containing migration scripts
         verbose: If True, print detailed progress messages (False by default)
+
+    Precondition:
+    - DB must exist
+    - DB must be versioned
     
     Returns True if all migrations succeed, False otherwise.
     """
@@ -357,8 +361,21 @@ def run_migrations(
         return False
     
     try:
-        # Ensure _meta table exists
-        ensure_meta_table(db_path)
+        # Ensure this is a managed db
+        try:
+            ensure_versioned_db(db_path)
+        except sqlite3.Error as e:
+            console.print(f"""[bold red]Error:[/bold red] Cannot migrate the db at {db_path}.
+
+This is because it is not managed by fastmigrate. Please do one of the following:
+
+1. Create a new versioned db using fastmigrate.ensure_versioned_db() or
+`fastmigrate --createdb`
+            
+2. Manually verify your existing db's data matches a version defined
+by your migration scripts, and then set your db's version to reflect
+that with fastmigrate.set_db_version()""")
+            return False
         
         # Get current version
         current_version = get_db_version(db_path)
