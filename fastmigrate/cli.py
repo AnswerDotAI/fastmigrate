@@ -115,6 +115,7 @@ def main(
             from fastmigrate.core import ensure_meta_table
             ensure_meta_table(db_path)
             typer.echo(f"Created new SQLite database with _meta table at: {db_path}")
+            sys.exit(0)
         except sqlite3.Error as e:
             typer.echo(f"Error creating database: {e}")
             sys.exit(1)
