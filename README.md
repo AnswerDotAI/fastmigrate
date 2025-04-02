@@ -13,8 +13,7 @@ from fastmigrate.core import ensure_versioned_db, run_migrations
 db_path = "path/to/database.db"
 migrations_dir = "path/to/migrations"
 
-# Create/verify there is a versioned database,
-# which marks it as managed by fastmigrate, or fail.
+# Create/verify there is a versioned database, or else fail
 current_version = ensure_versioned_db(db_path)
 
 # Apply any pending migrations
