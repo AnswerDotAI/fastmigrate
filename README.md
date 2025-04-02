@@ -82,15 +82,32 @@ When you run `fastmigrate`, it will look for migration scripts in `./migrations/
    Creates a timestamped backup of the database before running any migrations.
    The backup file will be named `database.db.YYYYMMDD_HHMMSS.backup`.
 
+### Unversioned Databases
+
+FastMigrate requires databases to be properly versioned before running migrations. If you attempt to run migrations on an unversioned database:
+
+1. `run_migrations()` will fail and return `False`.
+2. The CLI will display an error message and exit with a non-zero status.
+
+To create a new versioned database:
+- Use `ensure_versioned_db()` in your code, or
+- Use the CLI with the `--createdb` flag (only works for new databases)
+
+To version an existing database with data:
+1. Manually verify which migrations have already been applied
+2. Use `set_db_version()` to set the appropriate version number
+
 ### Important Considerations
 
-1. **Sequential Execution**: Migrations are executed in order based on their index numbers. If migration #3 fails, migrations #1-2 remain applied and the process stops.
+1. **Unversioned Databases**: FastMigrate will refuse to run migrations on existing databases that don't have a _meta table with version information.
 
-2. **Version Integrity**: The database version is only updated after a migration is successfully completed.
+2. **Sequential Execution**: Migrations are executed in order based on their index numbers. If migration #3 fails, migrations #1-2 remain applied and the process stops.
 
-3. **External Side Effects**: Python and Shell scripts may have side effects outside the database (file operations, network calls) that are not managed by fastmigrate.
+3. **Version Integrity**: The database version is only updated after a migration is successfully completed.
 
-4. **Database Locking**: During migration, the database may be locked. Applications should not attempt to access it while migrations are running.
+4. **External Side Effects**: Python and Shell scripts may have side effects outside the database (file operations, network calls) that are not managed by fastmigrate.
 
-5. **Backups**: For safety, you can use the `--backup` option to create a backup before running migrations.
+5. **Database Locking**: During migration, the database may be locked. Applications should not attempt to access it while migrations are running.
+
+6. **Backups**: For safety, you can use the `--backup` option to create a backup before running migrations.
 
