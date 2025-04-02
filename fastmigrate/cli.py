@@ -10,7 +10,7 @@ import typer
 from typer import Typer
 import configparser
 
-from fastmigrate.core import run_migrations, create_database_backup
+from fastmigrate.core import run_migrations, create_database_backup, get_db_version
 
 # Define constants - single source of truth for default values
 DEFAULT_DB = "data/database.db"
@@ -57,6 +57,9 @@ def main(
     version: bool = typer.Option(
         False, "--version", "-v", help="Show version and exit"
     ),
+    check_db_version: bool = typer.Option(
+        False, "--check_db_version", help="Check the database version and exit"
+    ),
 ) -> None:
     """Run SQLite database migrations.
     
@@ -69,6 +72,18 @@ def main(
     # Handle version flag first
     if version:
         typer.echo(f"FastMigrate version: {VERSION}")
+        return
+        
+    # Handle check_db_version flag
+    if check_db_version:
+        if not os.path.exists(db):
+            typer.echo(f"Database file does not exist: {db}")
+            sys.exit(1)
+        try:
+            db_version = get_db_version(db)
+            typer.echo(f"Database version: {db_version}")
+        except sqlite3.Error:
+            typer.echo("Database is unversioned (no _meta table)")
         return
     
     # Read config file paths (if config file exists)

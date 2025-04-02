@@ -11,7 +11,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from fastmigrate.cli import app
-from fastmigrate.core import ensure_meta_table
+from fastmigrate.core import ensure_meta_table, set_db_version
 
 
 runner = CliRunner()
@@ -334,6 +334,52 @@ def test_cli_createdb_flag():
         assert cursor.fetchone()[0] == 0
         
         conn.close()
+
+
+def test_check_db_version_option():
+    """Test the --check_db_version option correctly reports the database version."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir_path = Path(temp_dir)
+        db_path = temp_dir_path / "test.db"
+        
+        # Create database file with version 42
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        ensure_meta_table(str(db_path))
+        set_db_version(str(db_path), 42)
+        
+        # Test with versioned database
+        result = runner.invoke(app, [
+            "--db", str(db_path),
+            "--check_db_version"
+        ])
+        
+        assert result.exit_code == 0
+        assert "Database version: 42" in result.stdout
+        
+        # Create unversioned database
+        unversioned_db = temp_dir_path / "unversioned.db"
+        conn = sqlite3.connect(unversioned_db)
+        conn.close()
+        
+        # Test with unversioned database
+        result = runner.invoke(app, [
+            "--db", str(unversioned_db),
+            "--check_db_version"
+        ])
+        
+        assert result.exit_code == 0
+        assert "unversioned" in result.stdout.lower()
+        
+        # Test with non-existent database
+        nonexistent_db = temp_dir_path / "nonexistent.db"
+        result = runner.invoke(app, [
+            "--db", str(nonexistent_db),
+            "--check_db_version"
+        ])
+        
+        assert result.exit_code == 1
+        assert "does not exist" in result.stdout
 
 
 def test_cli_with_testsuite_a():
