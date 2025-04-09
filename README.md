@@ -95,18 +95,7 @@ Here are some commands:
    Backup and then run all needed migrations on the db, as above.
 
 
-### How to enrolled an existing databse into fastmigrate
-
-If you already have an app using sqlite3, and you want to adopt fastmigrate
-
-> [!NOTE]  
-> fastmigrate is not currently able to add versioning to a database already in use -- to do that, run this in python
-> ```python
-> from fastmigrate.core import _ensure_meta_table
-> _ensure_meta_table(path/to/db)
-> ```
-
-### Unversioned Databases
+### How to enrolled an existing, unversioned database into fastmigrate
 
 FastMigrate requires databases to be properly versioned before running migrations. If you attempt to run migrations on an unversioned database:
 
@@ -120,6 +109,13 @@ To create a new versioned database:
 To version an existing database with data:
 1. Manually verify which migrations have already been applied
 2. Use `fastmigrate.core._set_db_version()` to set the appropriate version number
+
+> [!NOTE]  
+> fastmigrate is not currently able to add versioning to a database already in use -- to do that, run this in python
+> ```python
+> from fastmigrate.core import _ensure_meta_table
+> _ensure_meta_table(path/to/db)
+> ```
 
 ### Important Considerations
 
