@@ -26,7 +26,7 @@ import unittest
 from pathlib import Path
 
 from fastmigrate.core import (
-    ensure_meta_table, get_db_version, set_db_version,
+    _ensure_meta_table, get_db_version, set_db_version,
     get_migration_scripts, run_migrations
 )
 
@@ -51,7 +51,7 @@ class TestComprehensiveMigrationFlow(unittest.TestCase):
         self.conn.close()
         
         # Initialize the _meta table (should be version 0)
-        ensure_meta_table(self.db_path)
+        _ensure_meta_table(self.db_path)
         
         # Verify we're starting with version 0
         self.assertEqual(get_db_version(self.db_path), 0, 

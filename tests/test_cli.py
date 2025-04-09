@@ -11,7 +11,7 @@ from unittest.mock import patch
 from typer.testing import CliRunner
 
 from fastmigrate.cli import app
-from fastmigrate.core import ensure_meta_table, set_db_version
+from fastmigrate.core import _ensure_meta_table, set_db_version
 
 
 runner = CliRunner()
@@ -45,7 +45,7 @@ def test_cli_defaults():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Create a test migration
         with open(migrations_path / "0001-test.sql", "w") as f:
@@ -99,7 +99,7 @@ def test_cli_explicit_paths():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Create a migration
         with open(migrations_dir / "0001-test.sql", "w") as f:
@@ -141,7 +141,7 @@ def test_cli_backup_option():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Create a test migration
         with open(migrations_path / "0001-test.sql", "w") as f:
@@ -205,7 +205,7 @@ def test_cli_config_file():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Create a migration
         with open(migrations_dir / "0001-test.sql", "w") as f:
@@ -259,7 +259,7 @@ def test_cli_precedence():
             conn = sqlite3.connect(db)
             conn.close()
             # Initialize the database with _meta table
-            ensure_meta_table(str(db))
+            _ensure_meta_table(str(db))
         
         # Create different migrations in each directory
         with open(migrations_config / "0001-config.sql", "w") as f:
@@ -345,7 +345,7 @@ def test_check_db_version_option():
         # Create database file with version 42
         conn = sqlite3.connect(db_path)
         conn.close()
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         set_db_version(str(db_path), 42)
         
         # Test with versioned database
@@ -393,7 +393,7 @@ def test_cli_with_testsuite_a():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Run the CLI with explicit paths to the test suite
         result = runner.invoke(app, [

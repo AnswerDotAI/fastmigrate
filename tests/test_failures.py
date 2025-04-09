@@ -8,7 +8,7 @@ import pytest
 from typer.testing import CliRunner
 
 from fastmigrate.cli import app
-from fastmigrate.core import run_migrations, ensure_meta_table
+from fastmigrate.core import run_migrations, _ensure_meta_table
 
 
 # Path to the migrations directory
@@ -27,7 +27,7 @@ def test_sql_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Run migrations - should fail on the second migration
         result = run_migrations(str(db_path), str(migrations_dir))
@@ -65,7 +65,7 @@ def test_cli_sql_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Run the CLI with path to the failure test suite
         result = runner.invoke(app, [
@@ -96,7 +96,7 @@ def test_python_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Create a test database with initial successful migration
         initial_migration = migrations_dir / "0001-init.sql"
@@ -140,7 +140,7 @@ def test_shell_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        ensure_meta_table(str(db_path))
+        _ensure_meta_table(str(db_path))
         
         # Create a test database with initial successful migration
         initial_migration = migrations_dir / "0001-init.sql"
@@ -189,7 +189,7 @@ def test_testsuite_failure_cli():
             conn.close()
             
             # Initialize the database with _meta table
-            ensure_meta_table(str(db_path))
+            _ensure_meta_table(str(db_path))
             
             # Create a temporary migrations directory with just the successful migration
             # and the specific failure migration we want to test

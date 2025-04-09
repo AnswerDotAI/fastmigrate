@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from fastmigrate.core import (
-    ensure_meta_table,
+    _ensure_meta_table,
     create_db,
     get_db_version,
     set_db_version,
@@ -26,8 +26,8 @@ def test_ensure_meta_table():
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
         db_path = temp_file.name
         
-        # Call ensure_meta_table on the path
-        ensure_meta_table(db_path)
+        # Call _ensure_meta_table on the path
+        _ensure_meta_table(db_path)
         
         # Connect and check results
         conn = sqlite3.connect(db_path)
@@ -62,7 +62,7 @@ def test_ensure_meta_table():
     
     # Test with invalid path to verify exception is raised
     with pytest.raises(FileNotFoundError):
-        ensure_meta_table("/nonexistent/path/to/db.db")
+        _ensure_meta_table("/nonexistent/path/to/db.db")
 
 
 def test_get_set_db_version():
@@ -72,7 +72,7 @@ def test_get_set_db_version():
         db_path = temp_file.name
         
         # Initialize the database first
-        ensure_meta_table(db_path)
+        _ensure_meta_table(db_path)
         
         # Initial version should be 0
         assert get_db_version(db_path) == 0

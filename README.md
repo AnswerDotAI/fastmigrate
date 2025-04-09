@@ -86,8 +86,8 @@ When you run `fastmigrate`, it will look for migration scripts in `./migrations/
 > [!NOTE]  
 > fastmigrate is not currently able to add versioning to a database already in use -- to do that, run this in python
 > ```python
-> from fastmigrate import ensure_meta_table
-> ensure_meta_table(path/to/db)
+> from fastmigrate.core import _ensure_meta_table
+> _ensure_meta_table(path/to/db)
 > ```
 
 ### Unversioned Databases

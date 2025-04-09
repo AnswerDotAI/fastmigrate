@@ -17,7 +17,7 @@ from rich.console import Console
 # Initialize Rich console
 console = Console()
 
-__all__ = ["run_migrations", "create_db", "ensure_meta_table", "get_db_version", "set_db_version", "create_database_backup",
+__all__ = ["run_migrations", "create_db", "get_db_version", "set_db_version", "create_database_backup",
            # deprecated
            "ensure_versioned_db"]
 
@@ -34,7 +34,7 @@ def create_db(db_path:str) -> int:
     if not os.path.exists(db_path):
         os.makedirs(os.path.dirname(os.path.abspath(db_path)),exist_ok=True)
         sqlite3.connect(db_path).close()
-        ensure_meta_table(db_path)
+        _ensure_meta_table(db_path)
         return 0
     else:
         return get_db_version(db_path)
@@ -47,7 +47,7 @@ def ensure_versioned_db(db_path:str) -> int:
                   stacklevel=2)
     return create_db(db_path)
 
-def ensure_meta_table(db_path: str) -> None:
+def _ensure_meta_table(db_path: str) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
