@@ -51,7 +51,9 @@ Fastmigrate implements the standard database migration pattern, so the key conce
 
 ### Command-line Usage
 
-To familiarize yourself with its action, or in development, you might want to run fastmigrate from the command line. 
+The fastmigrate command-line tool runs developer-written migrations but doesn't include the full library functionality. It only adds versioning to new databases; for existing databases, developers must implement modifications separately outside of the CLI.
+
+To familiarize yourself with its action, or in development, you might want to run `fastmigrate` from the command line. 
 
 When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format.
 
