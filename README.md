@@ -7,14 +7,14 @@ The fastmigrate library helps you with structured migration of data in SQLite. T
 Once you have added a `migrations/` directory to your app, you would typically use fastmigrate in your application code like so:
 
 ```python
-from fastmigrate.core import ensure_versioned_db, run_migrations
+from fastmigrate.core import create_db, run_migrations
 
 # At application startup:
 db_path = "path/to/database.db"
 migrations_dir = "path/to/migrations"
 
 # Create/verify there is a versioned database, or else fail
-current_version = ensure_versioned_db(db_path)
+current_version = create_db(db_path)
 
 # Apply any pending migrations
 success = run_migrations(db_path, migrations_dir, verbose=False)
@@ -98,7 +98,7 @@ FastMigrate requires databases to be properly versioned before running migration
 2. The CLI will display an error message and exit with a non-zero status.
 
 To create a new versioned database:
-- Use `ensure_versioned_db()` in your code, or
+- Use `create_db()` in your code, or
 - Use the CLI with the `--createdb` flag (only works for new databases)
 
 To version an existing database with data:
