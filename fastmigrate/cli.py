@@ -49,7 +49,7 @@ def main(
         DEFAULT_CONFIG, "--config", help="Path to config file (default: .fastmigrate)"
     ),
     create_db: bool = typer.Option(
-        False, "--createdb", help="Create the database file if it doesn't exist. Don't run migrations."
+        False, "--create_db", help="Create the database file if it doesn't exist. Don't run migrations."
     ),
     backup: bool = typer.Option(
         False, "--backup", help="Create a timestamped backup of the database before running migrations"
