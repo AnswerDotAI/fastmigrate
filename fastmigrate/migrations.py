@@ -1,9 +1,9 @@
-from apswutils import Database, Table
+from apswutils import Database, Table  # type: ignore
 
 def recreate_table(db_path:str,         # db path
                    table_name:str,      # name of table to update by re-creating
                    new_column_defs:str  # updated column definitions
-                   ):
+                   ) -> None:
     """Update a table by recreating it and copying existing data.
 
     For updates which cannot be achieved with `Table.transform()`,
