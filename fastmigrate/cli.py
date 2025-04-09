@@ -10,7 +10,7 @@ import typer
 from typer import Typer
 import configparser
 
-from fastmigrate.core import run_migrations, create_database_backup, get_db_version
+from fastmigrate.core import run_migrations, create_database_backup, get_db_version, create_db
 
 # Define constants - single source of truth for default values
 DEFAULT_DB = "data/database.db"
@@ -48,13 +48,13 @@ def main(
     config_path: str = typer.Option(
         DEFAULT_CONFIG, "--config", help="Path to config file (default: .fastmigrate)"
     ),
-    create_db: bool = typer.Option(
-        False, "--create_db", help="Create the database file if it doesn't exist. Don't run migrations."
+    should_create_db: bool = typer.Option(
+        False, "--createdb", "--create_db", help="Create the database file if it doesn't exist. Don't run migrations."
     ),
     backup: bool = typer.Option(
         False, "--backup", help="Create a timestamped backup of the database before running migrations"
     ),
-    version: bool = typer.Option(
+    show_version: bool = typer.Option(
         False, "--version", "-v", help="Show version and exit"
     ),
     check_db_version: bool = typer.Option(
@@ -70,7 +70,7 @@ def main(
     Paths can be provided via CLI options or config file, with CLI options taking precedence.
     """
     # Handle version flag first
-    if version:
+    if show_version:
         typer.echo(f"FastMigrate version: {VERSION}")
         return
         
@@ -105,19 +105,29 @@ def main(
     # Create parent directory
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     
-    # Create database file if requested and it doesn't exist
-    if create_db and not os.path.exists(db_path):
-        # Create an empty file
-        sqlite3.connect(db_path).close()
-        
-        # Initialize the meta table
+    # Handle --createdb/--create_db flag
+    if should_create_db:
         try:
-            from fastmigrate.core import _ensure_meta_table
-            _ensure_meta_table(db_path)
-            typer.echo(f"Created new SQLite database with _meta table at: {db_path}")
+            # Check if file existed before we call create_db
+            file_existed_before = os.path.exists(db_path)
+            
+            version = create_db(db_path)
+            
+            if not os.path.exists(db_path):
+                typer.echo(f"Error: Expected database file to be created at {db_path}")
+                sys.exit(1)
+            
+            if not file_existed_before:
+                typer.echo(f"Created new versioned SQLite database with version=0 at: {db_path}")
+            else:
+                typer.echo(f"A versioned database (version: {version}) already exists at: {db_path}")
+            
             sys.exit(0)
         except sqlite3.Error as e:
-            typer.echo(f"Error creating database: {e}")
+            typer.echo(f"An unversioned db already exists at {db_path}, or there was some other write error.\nError: {e}")
+            sys.exit(1)
+        except Exception as e:
+            typer.echo(f"Unexpected error: {e}")
             sys.exit(1)
     
     # Create a backup if requested
