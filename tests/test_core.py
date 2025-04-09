@@ -10,7 +10,7 @@ import pytest
 
 from fastmigrate.core import (
     ensure_meta_table,
-    ensure_versioned_db,
+    create_db,
     get_db_version,
     set_db_version,
     extract_version_from_filename,
@@ -104,8 +104,8 @@ def test_ensure_versioned_db():
         # Verify the file doesn't exist yet
         assert not os.path.exists(db_path)
         
-        # Call ensure_versioned_db - should create the DB
-        version = ensure_versioned_db(db_path)
+        # Call create_db - should create the DB
+        version = create_db(db_path)
         
         # Check results
         assert os.path.exists(db_path), "Database file should have been created"
@@ -133,8 +133,8 @@ def test_ensure_versioned_db():
         conn.commit()
         conn.close()
         
-        # Call ensure_versioned_db - should detect existing version
-        version = ensure_versioned_db(db_path)
+        # Call create_db - should detect existing version
+        version = create_db(db_path)
         
         # Check the version was detected correctly
         assert version == 42, "Should return existing version (42)"
@@ -149,9 +149,9 @@ def test_ensure_versioned_db():
         conn.commit()
         conn.close()
         
-        # Call ensure_versioned_db - should raise a sqlite3.Error
+        # Call create_db - should raise a sqlite3.Error
         with pytest.raises(sqlite3.Error) as excinfo:
-            ensure_versioned_db(db_path)
+            create_db(db_path)
         
         # Verify error message indicates missing _meta table
         assert "_meta table does not exist" in str(excinfo.value)

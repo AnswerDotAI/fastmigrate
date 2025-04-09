@@ -7,6 +7,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
@@ -16,9 +17,11 @@ from rich.console import Console
 # Initialize Rich console
 console = Console()
 
-__all__ = ["run_migrations", "ensure_versioned_db", "ensure_meta_table", "get_db_version", "set_db_version", "create_database_backup"]
+__all__ = ["run_migrations", "create_db", "ensure_meta_table", "get_db_version", "set_db_version", "create_database_backup",
+           # deprecated
+           "ensure_versioned_db"]
 
-def ensure_versioned_db(db_path:str) -> int:
+def create_db(db_path:str) -> int:
     """Creates a versioned db, or ensures the existing db is versioned.
 
     If no db exists, creates an EMPTY db with version 0. (This is ready
@@ -36,11 +39,24 @@ def ensure_versioned_db(db_path:str) -> int:
     else:
         return get_db_version(db_path)
 
+
+def ensure_versioned_db(db_path:str) -> int:
+    "See create_db"
+    warnings.warn("ensure_versioned_db is deprecated, as it has been renamed to create_db, which is functionally identical",
+                 DeprecationWarning,
+                  stacklevel=2)
+    return create_db(db_path)
+
 def ensure_meta_table(db_path: str) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
     This ensures we can only have one row in the table.
+
+    Users should call this directly only if manually building a
+    versioned db, for instance, for testing, or in order to manually
+    assert that a non-version db is compliant with the schema which
+    would be produced by migration scripts.
     
     Args:
         db_path: Path to the SQLite database
@@ -48,6 +64,7 @@ def ensure_meta_table(db_path: str) -> None:
     Raises:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read or write to the database
+
     """
     # First check if the file exists
     if not os.path.exists(db_path):
@@ -363,13 +380,13 @@ def run_migrations(
     try:
         # Ensure this is a managed db
         try:
-            ensure_versioned_db(db_path)
+            create_db(db_path)
         except sqlite3.Error as e:
             console.print(f"""[bold red]Error:[/bold red] Cannot migrate the db at {db_path}.
 
 This is because it is not managed by fastmigrate. Please do one of the following:
 
-1. Create a new versioned db using fastmigrate.ensure_versioned_db() or
+1. Create a new versioned db using fastmigrate.create_db() or
 `fastmigrate --createdb`
             
 2. Manually verify your existing db's data matches a version defined
