@@ -51,7 +51,7 @@ Fastmigrate implements the standard database migration pattern, so the key conce
 
 ### Command-line Usage
 
-To familiarize yourself with its action, or in development, you might want to run fastmigrate from the command line. 
+To familiarize yourself with its action, or in development, you might want to run fastmigrate from the command line.
 
 When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format.
 
@@ -80,6 +80,15 @@ When you run `fastmigrate`, it will look for migration scripts in `./migrations/
    ```
    Creates a timestamped backup of the database before running any migrations.
    The backup file will be named `database.db.YYYYMMDD_HHMMSS.backup`.
+
+
+
+> [!NOTE]  
+> fastmigrate is not currently able to add versioning to a database already in use -- to do that, run this in python
+> ```python
+> from fastmigrate import ensure_meta_table
+> ensure_meta_table(path/to/db)
+> ```
 
 ### Unversioned Databases
 
