@@ -1,8 +1,8 @@
 ## fastmigrate
 
-The fastmigrate library helps you with structured migration of data in SQLite. That is, it gives you a way to specify and run a sequence of updates to your database schema, while preserving user data.
+The fastmigrate library helps with structured migration of data in SQLite. That is, it gives you a way to specify and run a sequence of updates to your database schema, while preserving user data.
 
-### Programmatic Usage
+### How to use it in your app
 
 Once you have added a `migrations/` directory to your app, you would typically use fastmigrate in your application code like so:
 
@@ -23,65 +23,81 @@ if not success:
     print("Database migration failed!")
 ```
 
-fastmigrate will then detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and apply the files in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
+fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
 
 This will guarantee that all subsequent code will enccounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
 
 ### Key concepts:
 
-Fastmigrate implements the standard database migration pattern, so the key concepts may be familiar.
+Fastmigrate implements the standard database migration pattern, so these key concepts may be familiar.
 
 - the **version number** of a database:
-  - this is an `int` value stored in a table `_meta` in a field called `version`. This table will be enforced to have exactly one row. This value will be the "db version value" of the last migration script which was run on that database.
+  - this is an `int` value stored in a single-row table `_meta` in the field `version`. This is "db version", which is also version of the last migration script which was run on that database.
   
-- the **migrations directory** is a directory which contains the migration scripts, which initialize the db to its initial version and update it to the latest version as needed.
+- the **migrations directory** contains the migration scripts, which initialize the db to its initial version 1 and update it to the latest version as needed.
 
-- a **migration script** must be:
-  - a file which conforms to the "fastmigrate naming rule"; and,
-  - one of the following:
+- every valid **migration script** must:
+  - conform to the "fastmigrate naming rule"
+  - be one of the following:
      - a .py or .sh file. In this case, fastmigrate will execute the file, pass the path to the db as the first positional argument. Fastmigrate will interpret a non-zero exit code as failure.
      - a .sql file. In this case, fastmigrate will execute the SQL script against the database.
+  - terminate with an exit code of 0, if and only if it succeeds
+  - (ideally) leave the db unmodified, if it fails
   
-- the **fastmigrate naming rule** is that every migration script must have a name matching this pattern: `[index]-[description].[fileExtension]`, where `[index]` must be a string representing 4-digit integer. This naming convention defines the order in which scripts should be run.
+- the **fastmigrate naming rule** is that every migration script match this naming pattern: `[index]-[description].[fileExtension]`, where `[index]` must be a string representing 4-digit integer. This naming convention defines the order in which scripts will run and the db version each migration script produces.
 
 - **attempting a migration** is:
   - determining the current version of a database
   - determining if there are any migration scripts with versions higher than the db version
   - trying to run those scripts
 
-### Command-line Usage
+### What fastmigrate guarantees
 
-To familiarize yourself with its action, or in development, you might want to run fastmigrate from the command line.
+To protect your data, fastmigrate offers the following guarantee:
 
-When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format.
+> [!NOTE]  
+> If you use fastmigrate to create the database and to run migration scripts, and if you define valid migration scripts, then fastmigrate will either produce a valid database, or else fail with an explicit error. It will never leave a database silently corrupted or marked with an inaccurate version.
+> 
+> If in additon to the above, you _additionally_ define your migration scripts so they leave the the db unmodified if they fail (which is easy with sql-based scripts), then fastmigrate can further guarantee that if a migration fails, the db will still be in a valid state.
 
-### Command Line Options
+But to get this guarantee, you should use fastmigrate to handle creating the db and running migrations.
 
-1. **Basic Usage**:
+One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
+
+### How to use it in from the command line
+
+When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format. But you can also provide them as with the command line arguments `--db` and `--migrations`.
+
+Here are some commands:
+
+1. **Create Database**:
    ```
-   fastmigrate
+   fastmigrate --createdb --db /path/to/data.db
    ```
-   This will use the defaults, looking for migrations in `./migrations/` and the database in `./data/database.db`.
+   If no database is there, creates an empty database with version=0, If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an eror code. This is equivalent to calling `fastmigrate.create_db()`
 
-2. **Specify Paths**:
+2. **Check a db**
    ```
-   fastmigrate --db path/to/database.db --migrations path/to/migrations
+   fastmigrate --check_db_version --db /path/to/data.db
    ```
+   This will report the version of the db.
+   
+3. **Run migrations**:
+   ```
+   fastmigrate --migrations /path/to/migrations/ --db /path/to/data.db
+   ```
+   Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
 
-3. **Create Database**:
+4. **Backup and run migrations**:
    ```
-   fastmigrate --createdb
+   fastmigrate --backup --migrations /path/to/migrations/ --db /path/to/data.db
    ```
-   Creates an empty database with the _meta table if it doesn't exist.
-
-4. **Database Backup**:
-   ```
-   fastmigrate --backup
-   ```
-   Creates a timestamped backup of the database before running any migrations.
-   The backup file will be named `database.db.YYYYMMDD_HHMMSS.backup`.
+   Backup and then run all needed migrations on the db, as above.
 
 
+### How to enrolled an existing databse into fastmigrate
+
+If you already have an app using sqlite3, and you want to adopt fastmigrate
 
 > [!NOTE]  
 > fastmigrate is not currently able to add versioning to a database already in use -- to do that, run this in python
