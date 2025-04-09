@@ -1,6 +1,6 @@
 """fastmigrate - Structured migration of data in SQLite databases."""
 
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
 from fastmigrate.core import run_migrations, ensure_versioned_db, get_db_version, create_database_backup
 
