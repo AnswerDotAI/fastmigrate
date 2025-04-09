@@ -6,7 +6,6 @@
 - Run with args: `python -m fastmigrate --db path/to/db --migrations path/to/migrations`
 - Tests: `pytest`
 - Single test: `pytest tests/path/to/test.py::test_function`
-- Lint: `ruff check .`
 - Format: `black .`
 - Type check: `mypy .`
 
