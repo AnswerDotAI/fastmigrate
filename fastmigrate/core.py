@@ -53,9 +53,9 @@ def ensure_meta_table(db_path: str) -> None:
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
     This ensures we can only have one row in the table.
 
-    Users should call this directly only if manually building a
-    versioned db, for instance, for testing, or in order to manually
-    assert that a non-version db is compliant with the schema which
+    WARNING: users should call this directly only if preparing a
+    versioned db manually, for instance, for testing or for enrolling
+    a non-version db after verifying its values and schema are what
     would be produced by migration scripts.
     
     Args:
