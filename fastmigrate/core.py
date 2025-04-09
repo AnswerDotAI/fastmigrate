@@ -17,7 +17,7 @@ from rich.console import Console
 # Initialize Rich console
 console = Console()
 
-__all__ = ["run_migrations", "create_db", "get_db_version", "set_db_version", "create_database_backup",
+__all__ = ["run_migrations", "create_db", "get_db_version", "create_database_backup",
            # deprecated
            "ensure_versioned_db"]
 
@@ -138,7 +138,7 @@ def get_db_version(db_path: str) -> int:
             conn.close()
 
 
-def set_db_version(db_path: str, version: int) -> None:
+def _set_db_version(db_path: str, version: int) -> None:
     """Set the database version.
     
     Uses an UPSERT pattern (INSERT OR REPLACE) to ensure we always set the 
@@ -391,7 +391,7 @@ This is because it is not managed by fastmigrate. Please do one of the following
             
 2. Manually verify your existing db's data matches a version defined
 by your migration scripts, and then set your db's version to reflect
-that with fastmigrate.set_db_version()""")
+that with fastmigrate.core._set_db_version()""")
             return False
         
         # Get current version
@@ -453,7 +453,7 @@ that with fastmigrate.set_db_version()""")
             stats["applied"] += 1
             
             # Update version
-            set_db_version(db_path, version)
+            _set_db_version(db_path, version)
             if verbose:
                 console.print(f"[green]✓[/green] Database updated to version [bold]{version}[/bold] [dim]({migration_duration:.2f}s)[/dim]")
         

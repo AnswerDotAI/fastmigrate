@@ -103,7 +103,7 @@ To create a new versioned database:
 
 To version an existing database with data:
 1. Manually verify which migrations have already been applied
-2. Use `set_db_version()` to set the appropriate version number
+2. Use `fastmigrate.core._set_db_version()` to set the appropriate version number
 
 ### Important Considerations
 

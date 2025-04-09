@@ -12,7 +12,7 @@ from fastmigrate.core import (
     _ensure_meta_table,
     create_db,
     get_db_version,
-    set_db_version,
+    _set_db_version,
     extract_version_from_filename,
     get_migration_scripts,
     run_migrations,
@@ -65,7 +65,7 @@ def test_ensure_meta_table():
         _ensure_meta_table("/nonexistent/path/to/db.db")
 
 
-def test_get_set_db_version():
+def test_get_set_db_version():  # Tests the internal _set_db_version function
     """Test getting and setting the database version."""
     # Create a temp file database for testing
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
@@ -78,7 +78,7 @@ def test_get_set_db_version():
         assert get_db_version(db_path) == 0
         
         # Set and get version
-        set_db_version(db_path, 42)
+        _set_db_version(db_path, 42)
         assert get_db_version(db_path) == 42
         
         # Check that id=1 is enforced in the database
@@ -92,7 +92,7 @@ def test_get_set_db_version():
         get_db_version("/nonexistent/path/to/db.db")
         
     with pytest.raises(FileNotFoundError):
-        set_db_version("/nonexistent/path/to/db.db", 50)
+        _set_db_version("/nonexistent/path/to/db.db", 50)
 
 
 def test_ensure_versioned_db():

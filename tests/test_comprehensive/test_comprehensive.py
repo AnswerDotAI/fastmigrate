@@ -26,7 +26,7 @@ import unittest
 from pathlib import Path
 
 from fastmigrate.core import (
-    _ensure_meta_table, get_db_version, set_db_version,
+    _ensure_meta_table, get_db_version, _set_db_version,
     get_migration_scripts, run_migrations
 )
 
