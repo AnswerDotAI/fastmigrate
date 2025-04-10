@@ -27,11 +27,11 @@ Suppose that you want to change your db schema, which does "one more thing". Thi
 
 The second thing you should do is update all of your application code so that it now expects to see version 11 of your database. That is, all the code which runs after the init code may assume migration has taken place. It does not need conditional paths to handle the older version, version 10, because the fastmigrate initialization code will have already taken care of running the migration script if necessary, and it will have succeeded or failed.
 
-Those two changes you made -- adding a new migration script, and updating your application code -- should ideally be added to your version control *with the same commit* since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a time when you want code which expects version 11 to see a database at version 10, so there is no reason to check in these changes separately. 
+Those two changes you made -- adding a new migration script, and updating your application code -- should ideally be added to your version control *with the same commit* since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a moment when you want code which expects version 11 to see a database at version 10. So it is unwise to check in these changes separately. 
 
-Now, of course, test your application locally before deploying.
+Now, of course, test your application locally before pushing or deploying.
 
-In testing, or in developming your migration script, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run `fastmigrate --migrations /path/to/migrations --db /path/to/data.db`, with `data.db` at version 10 and an 0011 script in `migrations/`, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.
+How? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run `fastmigrate --migrations /path/to/migrations --db /path/to/data.db`, with `data.db` at version 10 and an 0011 script in `migrations/`, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.
 
 
 
