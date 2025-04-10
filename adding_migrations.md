@@ -1,4 +1,4 @@
-# Safely adding a new migrations
+# Safely adding a new migration
 
 So you need to modify your db schema? And you want to be very sure you are doing it correctly?
 
@@ -25,7 +25,7 @@ So what does this imply about adding a new migration?
 
 Suppose that you want to change your db schema, which does "one more thing". This defines a *next version* of your database. Since the current version of your db is 10, the next version of your database will be 11. So the first thing you should do is write the migration script which updates your database from its current version to the next version, as a file named `0011-one-more-thing.py` (or .sql or .sh).
 
-The second thing you should do is update all of your application code so that it now expects to see version 11 of your database. That is, all the code which runs after the init code may assume migration has taken place. It does not need conditional paths to handle the older version, version 10, because the fastmigration initialization code will have already taken care of running the migration script if necessary, and it will have succeeded or failed.
+The second thing you should do is update all of your application code so that it now expects to see version 11 of your database. That is, all the code which runs after the init code may assume migration has taken place. It does not need conditional paths to handle the older version, version 10, because the fastmigrate initialization code will have already taken care of running the migration script if necessary, and it will have succeeded or failed.
 
 Those two changes you made -- adding a new migration script, and updating your application code -- should ideally be added to your version control *with the same commit* since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a time when you want code which expects version 11 to see a database at version 10, so there is no reason to check in these changes separately. 
 

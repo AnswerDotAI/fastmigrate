@@ -25,7 +25,7 @@ if not success:
 
 fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
 
-This will guarantee that all subsequent code will enccounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
+This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
 
 If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding migrations](./adding_migrations.md)
 
@@ -34,7 +34,7 @@ If you get the idea and are just looking for a reminder about a reasonable workf
 Fastmigrate implements the standard database migration pattern, so these key concepts may be familiar.
 
 - the **version number** of a database:
-  - this is an `int` value stored in a single-row table `_meta` in the field `version`. This is "db version", which is also version of the last migration script which was run on that database.
+  - this is an `int` value stored in a single-row table `_meta` in the field `version`. This is "db version", which is also the version of the last migration script which was run on that database.
   
 - the **migrations directory** contains the migration scripts, which initialize the db to its initial version 1 and update it to the latest version as needed.
 
@@ -60,13 +60,13 @@ To protect your data, fastmigrate offers the following guarantee:
 > [!NOTE]  
 > If you use fastmigrate to create the database and to run migration scripts, and if you define valid migration scripts, then fastmigrate will either produce a valid database, or else fail with an explicit error. It will never leave a database silently corrupted or marked with an inaccurate version.
 > 
-> If in additon to the above, you _additionally_ define your migration scripts so they leave the the db unmodified if they fail (which is easy with sql-based scripts), then fastmigrate can further guarantee that if a migration fails, the db will still be in a valid state.
+> If in addition to the above, you _additionally_ define your migration scripts so they leave the db unmodified if they fail (which is easy with sql-based scripts), then fastmigrate can further guarantee that if a migration fails, the db will still be in a valid state.
 
 But to get this guarantee, you should use fastmigrate to handle creating the db and running migrations.
 
 One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
 
-### How to use it from the command line
+### How to use fastmigrate from the command line
 
 When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format. But you can also provide them as with the command line arguments `--db` and `--migrations`.
 
@@ -76,7 +76,7 @@ Here are some commands:
    ```
    fastmigrate --createdb --db /path/to/data.db
    ```
-   If no database is there, creates an empty database with version=0, If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an eror code. This is equivalent to calling `fastmigrate.create_db()`
+   If no database is there, creates an empty database with version=0, If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an error code. This is equivalent to calling `fastmigrate.create_db()`
 
 2. **Check a db**
    ```
@@ -97,7 +97,7 @@ Here are some commands:
    Backup and then run all needed migrations on the db, as above.
 
 
-### How to enrolled an existing, unversioned database into fastmigrate
+### How to enroll an existing, unversioned database into fastmigrate
 
 FastMigrate requires databases to be properly versioned before running migrations.
 
