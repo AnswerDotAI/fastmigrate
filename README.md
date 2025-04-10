@@ -55,14 +55,14 @@ Fastmigrate implements the standard database migration pattern, so these key con
 
 ### What fastmigrate guarantees
 
-To protect your data, fastmigrate offers the following guarantee:
+The point of the system is that if you adopt it, fastmigrate offers the following guarantee:
 
 > [!NOTE]  
 > If you use fastmigrate to create the database and to run migration scripts, and if you define valid migration scripts, then fastmigrate will either produce a valid database, or else fail with an explicit error. It will never leave a database silently corrupted or marked with an inaccurate version.
 > 
 > If in addition to the above, you _additionally_ define your migration scripts so they leave the db unmodified if they fail (which is easy with sql-based scripts), then fastmigrate can further guarantee that if a migration fails, the db will still be in a valid state.
 
-But to get this guarantee, you should use fastmigrate to handle creating the db and running migrations.
+But to get this guarantee, you need fastmigrate to handle creating the db and running migrations (unless you [enrolling an existing db](./enrolling.md)).
 
 One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
 
@@ -103,7 +103,7 @@ FastMigrate requires databases to be properly versioned before running migration
 
 But if you already have a database which was created outside of fastmigrate, then you need to enroll it.
 
-Please see the dedicated note on [enrolling an existing db](./enrolling.md)
+Please see the dedicated note on [enrolling an existing db](./enrolling.md).
 
 ### Miscellaneous Considerations
 
