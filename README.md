@@ -27,6 +27,8 @@ fastmigrate will detect every validly-named migration script in the migrations d
 
 This will guarantee that all subsequent code will enccounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
 
+If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding a new migration][adding_migrations.md]
+
 ### Key concepts:
 
 Fastmigrate implements the standard database migration pattern, so these key concepts may be familiar.
@@ -64,7 +66,7 @@ But to get this guarantee, you should use fastmigrate to handle creating the db 
 
 One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
 
-### How to use it in from the command line
+### How to use it from the command line
 
 When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format. But you can also provide them as with the command line arguments `--db` and `--migrations`.
 
@@ -97,27 +99,13 @@ Here are some commands:
 
 ### How to enrolled an existing, unversioned database into fastmigrate
 
-FastMigrate requires databases to be properly versioned before running migrations. If you attempt to run migrations on an unversioned database:
+FastMigrate requires databases to be properly versioned before running migrations.
 
-1. `run_migrations()` will fail and return `False`.
-2. The CLI will display an error message and exit with a non-zero status.
+But if you already have a database which was created outside of fastmigrate, then you need to enroll it.
 
-To create a new versioned database:
-- Use `create_db()` in your code, or
-- Use the CLI with the `--createdb` flag (only works for new databases)
+Please see the dedicated note on [enrolling an existing db][enrolling.md]
 
-To version an existing database with data:
-1. Manually verify which migrations have already been applied
-2. Use `fastmigrate.core._set_db_version()` to set the appropriate version number
-
-> [!NOTE]  
-> fastmigrate is not currently able to add versioning to a database already in use -- to do that, run this in python
-> ```python
-> from fastmigrate.core import _ensure_meta_table
-> _ensure_meta_table(path/to/db)
-> ```
-
-### Important Considerations
+### Miscellaneous Considerations
 
 1. **Unversioned Databases**: FastMigrate will refuse to run migrations on existing databases that don't have a _meta table with version information.
 
