@@ -8,7 +8,7 @@ But what if you are starting with an application built outside of fastmigrate, a
 
 To clarify the background: the key invariant which we need to maintain is this: *any database which has a fastmigrate version number (like 1, or like 3) is exactly in the state which would be produced by the migration script with that version number (like by `0001-initialize.sql` or `0003-unify-users.sql`).* 
 
-So if you create a db with fastmigrate, it is created with version 0, and the version only advances as a result of running migration scripts. So this maintains the invariant.
+Now if you create a db with fastmigrate, it is created with version 0, and the version only advances as a result of running migration scripts. So this maintains the invariant.
 
 But if you are enrolling an existing db into fastmigrate, then you need to do three things.
 
