@@ -27,7 +27,7 @@ fastmigrate will detect every validly-named migration script in the migrations d
 
 This will guarantee that all subsequent code will enccounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
 
-If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding migrations][./adding_migrations.md]
+If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding migrations](./adding_migrations.md)
 
 ### Key concepts:
 
@@ -103,7 +103,7 @@ FastMigrate requires databases to be properly versioned before running migration
 
 But if you already have a database which was created outside of fastmigrate, then you need to enroll it.
 
-Please see the dedicated note on [enrolling an existing db][./enrolling.md]
+Please see the dedicated note on [enrolling an existing db](./enrolling.md)
 
 ### Miscellaneous Considerations
 
