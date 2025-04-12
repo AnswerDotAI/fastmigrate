@@ -230,10 +230,11 @@ def test_cli_selective_migrations():
             VALUES (1, 'Initial migration');
             """)
         
-        # Run first migration only
+        # Run first migration only (with --run_migrations flag)
         result = runner.invoke(app, [
             "--db", str(db_path),
-            "--migrations", str(migrations_dir)
+            "--migrations", str(migrations_dir),
+            "--run_migrations"
         ])
         assert result.exit_code == 0
         
@@ -274,7 +275,8 @@ if __name__ == "__main__":
         # Second run: should skip migrations with versions <= 5 and only apply 0010
         result = runner.invoke(app, [
             "--db", str(db_path),
-            "--migrations", str(migrations_dir)
+            "--migrations", str(migrations_dir),
+            "--run_migrations"
         ])
         assert result.exit_code == 0
         

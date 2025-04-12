@@ -31,7 +31,7 @@ except ImportError:
 
 # Create a global app instance used by both tests and CLI
 app = Typer(
-    help="Structured migration of data in SQLite databases",
+    help="Check SQLite database version and run migrations when requested",
     context_settings={"help_option_names": ["-h", "--help"]}
 )
 
@@ -57,11 +57,11 @@ def main(
     show_version: bool = typer.Option(
         False, "--version", "-v", help="Show version and exit"
     ),
-    check_db_version: bool = typer.Option(
-        False, "--check_db_version", help="Check the database version and exit"
+    run_migrations_flag: bool = typer.Option(
+        False, "--run_migrations", help="Run database migrations (default behavior is to check version only)"
     ),
 ) -> None:
-    """Run SQLite database migrations.
+    """Check database version or run migrations if --run_migrations is specified.
     
     FastMigrate applies migration scripts to a SQLite database in sequential order.
     It keeps track of which migrations have been applied using a _meta table
@@ -72,18 +72,6 @@ def main(
     # Handle version flag first
     if show_version:
         typer.echo(f"FastMigrate version: {VERSION}")
-        return
-        
-    # Handle check_db_version flag
-    if check_db_version:
-        if not os.path.exists(db):
-            typer.echo(f"Database file does not exist: {db}")
-            sys.exit(1)
-        try:
-            db_version = get_db_version(db)
-            typer.echo(f"Database version: {db_version}")
-        except sqlite3.Error:
-            typer.echo("Database is unversioned (no _meta table)")
         return
     
     # Read config file paths (if config file exists)
@@ -129,6 +117,18 @@ def main(
         except Exception as e:
             typer.echo(f"Unexpected error: {e}")
             sys.exit(1)
+            
+    # Default behavior is to check the database version
+    if not run_migrations_flag:
+        if not os.path.exists(db_path):
+            typer.echo(f"Database file does not exist: {db_path}")
+            sys.exit(1)
+        try:
+            db_version = get_db_version(db_path)
+            typer.echo(f"Database version: {db_version}")
+        except sqlite3.Error:
+            typer.echo("Database is unversioned (no _meta table)")
+        return
     
     # Create a backup if requested
     if backup and os.path.exists(db_path):

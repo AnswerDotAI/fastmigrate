@@ -67,10 +67,11 @@ def test_cli_sql_failure():
         # Initialize the database with _meta table
         _ensure_meta_table(str(db_path))
         
-        # Run the CLI with path to the failure test suite
+        # Run the CLI with path to the failure test suite and --run_migrations flag
         result = runner.invoke(app, [
             "--db", str(db_path),
-            "--migrations", str(FAILURES_DIR / "migrations")
+            "--migrations", str(FAILURES_DIR / "migrations"),
+            "--run_migrations"
         ])
         
         # CLI should exit with non-zero code
@@ -210,10 +211,11 @@ def test_testsuite_failure_cli():
             if migration["file"].endswith((".py", ".sh")):
                 (migrations_dir / migration["file"]).chmod(0o755)
             
-            # Run the CLI
+            # Run the CLI with --run_migrations flag
             result = runner.invoke(app, [
                 "--db", str(db_path),
-                "--migrations", str(migrations_dir)
+                "--migrations", str(migrations_dir),
+                "--run_migrations"
             ])
             
             # CLI should exit with non-zero code

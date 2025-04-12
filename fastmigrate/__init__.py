@@ -1,4 +1,4 @@
-"""fastmigrate - Structured migration of data in SQLite databases."""
+"""fastmigrate - Check SQLite database versions and run structured migrations."""
 
 __version__ = "0.2.4"
 

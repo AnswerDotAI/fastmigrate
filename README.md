@@ -80,19 +80,19 @@ Here are some commands:
 
 2. **Check a db**
    ```
-   fastmigrate --check_db_version --db /path/to/data.db
+   fastmigrate --db /path/to/data.db
    ```
-   This will report the version of the db.
+   This will report the version of the db (the default behavior).
    
 3. **Run migrations**:
    ```
-   fastmigrate --migrations /path/to/migrations/ --db /path/to/data.db
+   fastmigrate --run_migrations --migrations /path/to/migrations/ --db /path/to/data.db
    ```
    Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
 
 4. **Backup and run migrations**:
    ```
-   fastmigrate --backup --migrations /path/to/migrations/ --db /path/to/data.db
+   fastmigrate --run_migrations --backup --migrations /path/to/migrations/ --db /path/to/data.db
    ```
    Backup and then run all needed migrations on the db, as above.
 

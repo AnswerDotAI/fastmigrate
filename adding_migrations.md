@@ -41,7 +41,7 @@ Those two changes you made -- adding a new migration script, and updating your a
 
 Of course, test your application locally before pushing or deploying.
 
-How? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run `fastmigrate --migrations /path/to/migrations --db /path/to/data.db`, with `data.db` at version 10 and an 0011 script in `migrations/`, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.
+How? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run `fastmigrate --run_migrations --migrations /path/to/migrations --db /path/to/data.db`, with `data.db` at version 10 and an 0011 script in `migrations/`, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.
 
 The fundamental rule to keep in mind with migrations is that you only ever add an additional migration. You never go back and change old ones. You could say the collection of migrations is _append only_. This is what makes them reliable, because it is what guarantees that they are always working from a known state. But it is also what can make the workflow for adding a new migration unfamiliar, since you need to think in terms of the _diffs_ to the database, even while your application code is usually thinking in terms of the database's instantaneous _state_.
 
