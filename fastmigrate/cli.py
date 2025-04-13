@@ -31,7 +31,7 @@ except ImportError:
 
 # Create a global app instance used by both tests and CLI
 app = Typer(
-    help="Check SQLite database version and run migrations when requested",
+    help="Structured migration of data in SQLite databases",
     context_settings={"help_option_names": ["-h", "--help"]}
 )
 
