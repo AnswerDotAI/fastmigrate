@@ -280,7 +280,7 @@ def execute_shell_script(db_path: str, script_path: str) -> bool:
         return False
 
 
-def create_database_backup(db_path: str) -> str:
+def create_database_backup(db_path: str) -> str | None:
     """Create a backup of the SQLite database file using SQLite's built-in backup command.
     
     Uses the '.backup' SQLite command which ensures a consistent backup even if the
@@ -295,7 +295,7 @@ def create_database_backup(db_path: str) -> str:
     # Only proceed if the database exists
     if not os.path.exists(db_path):
         console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
-        return ""
+        return None
         
     # Create a timestamped backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -327,7 +327,7 @@ def create_database_backup(db_path: str) -> str:
         return backup_path
     except Exception as e:
         console.print(f"[bold red]Error creating backup:[/bold red] {e}")
-        return ""
+        return None
 
 
 def execute_migration_script(db_path: str, script_path: str) -> bool:
