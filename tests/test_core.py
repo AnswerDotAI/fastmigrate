@@ -235,7 +235,7 @@ def test_create_database_backup():
         # Test backup of non-existent database
         non_existent_path = os.path.join(temp_dir, "nonexistent.db")
         result = create_database_backup(non_existent_path)
-        assert result == ""
+        assert result is None
 
 
 def test_run_migrations_on_unversioned_db():
