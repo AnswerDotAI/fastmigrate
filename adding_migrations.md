@@ -35,7 +35,9 @@ Suppose that you want to change your db schema, so that it does "one more thing"
 
 2. The second thing you should do is update all of your application code so that it now expects to see version 11 of your database. That is, all the code which runs after the init code should assume migration has taken place. It does not need conditional paths to handle the older version, version 10, because the fastmigrate initialization code is responsible for running the migration script if necessary, and it will have succeeded or explicitly failed.
 
-Those two changes you made -- adding a new migration script, and updating your application code -- should ideally be added to your version control *with the same commit* since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a moment when you want code which expects version 11 to see a database at version 10. So it is unwise to check in these changes separately. 
+Those two changes you made -- adding a new migration script, and updating your application code -- should ideally be added to your version control *with the same commit* since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a moment when you want code which expects version 11 to see a database at version 10. So it is unwise to check in these changes separately.
+
+> Note: if you add a .sql migration script, you need have the sqlite3 binary installed on your system.
 
 ### How to test
 

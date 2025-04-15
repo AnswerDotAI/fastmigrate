@@ -2,6 +2,19 @@
 
 The fastmigrate library helps with structured migration of data in SQLite. That is, it gives you a way to specify and run a sequence of updates to your database schema, while preserving user data.
 
+### Installation
+
+fastmigrate is avalible to install from pypi.
+
+```bash
+pip install fastmigrate
+
+# or if using uv add it to your pyproject.toml
+uv add fastmigrate
+```
+
+If you create a .sql migration script, you need have the sqlite3 binary installed on your system.
+
 ### How to use fastmigrate in your app
 
 Once you have added a `migrations/` directory to your app, you would typically use fastmigrate in your application code like so:
