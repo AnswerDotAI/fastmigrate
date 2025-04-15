@@ -7,17 +7,18 @@ name = "fastmigrate"
 version = "0.2.4"
 description = "Structured migration of data in SQLite databases"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 dependencies = [
     "typer>=0.9.0",
     "apswutils>=0.0.2",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pytest>=7.0.0",
     "mypy>=1.0.0",
+    "pytest-mock>=3.14.0",
 ]
 
 [project.scripts]
@@ -29,7 +30,7 @@ testpaths = ["tests"]
 # No linting/formatting tools specified
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
