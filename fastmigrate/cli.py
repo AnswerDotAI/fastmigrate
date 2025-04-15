@@ -10,7 +10,7 @@ import typer
 from typer import Typer
 import configparser
 
-from fastmigrate.core import run_migrations, create_database_backup, get_db_version, create_db
+from fastmigrate.core import run_migrations, create_db_backup, get_db_version, create_db
 
 # Define constants - single source of truth for default values
 DEFAULT_DB = "data/database.db"
@@ -132,7 +132,7 @@ def main(
     
     # Create a backup if requested
     if backup and os.path.exists(db_path):
-        if create_database_backup(db_path) is None:
+        if create_db_backup(db_path) is None:
             sys.exit(1)
     
     # Run migrations with verbose=True for CLI usage

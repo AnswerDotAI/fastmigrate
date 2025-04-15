@@ -16,7 +16,7 @@ from rich.console import Console
 # Initialize Rich console
 console = Console()
 
-__all__ = ["run_migrations", "create_db", "get_db_version", "create_database_backup",
+__all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
            # deprecated
            "ensure_versioned_db"]
 
@@ -280,15 +280,15 @@ def execute_shell_script(db_path: str, script_path: str) -> bool:
         return False
 
 
-def create_database_backup(db_path: str) -> str | None:
+def create_db_backup(db_path: str) -> str | None:
     """Create a backup of the SQLite database file using SQLite's built-in backup command.
-    
+
     Uses the '.backup' SQLite command which ensures a consistent backup even if the
     database is in the middle of a transaction.
-    
+
     Args:
         db_path: Path to the SQLite database file
-        
+
     Returns:
         str: Path to the backup file
     """
@@ -296,38 +296,48 @@ def create_database_backup(db_path: str) -> str | None:
     if not os.path.exists(db_path):
         console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
         return None
-        
+
     # Create a timestamped backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = f"{db_path}.{timestamp}.backup"
-    
-    # Create the backup using sqlite3 command line
+
+    # Check if the backup file already exists
+    if os.path.exists(backup_path):
+        console.print(f"[red]Error:[/red] Backup file already exists: {backup_path}")
+        return None
+
+    conn = None
+    backup_conn = None
     try:
-        # Construct the command that will be executed
-        sqlite_command = f"sqlite3 '{db_path}' \".backup '{backup_path}'\""
-        console.print(f"Executing: {sqlite_command}")
-        
-        # Execute the SQLite backup command
-        result = subprocess.run(
-            sqlite_command,
-            shell=True,
-            capture_output=True,
-            text=True
-        )
-        
-        # Check for errors
-        if result.returncode != 0:
-            raise Exception(f"SQLite backup command failed: {result.stderr}")
-        
-        # Verify the backup file was created
+        # Connect to the databases
+        conn = sqlite3.connect(db_path)
+        backup_conn = sqlite3.connect(backup_path)
+
+        # Perform the backup
+        with backup_conn:
+            conn.backup(backup_conn)
+
         if not os.path.exists(backup_path):
             raise Exception("Backup file was not created")
-            
+
         console.print(f"[green]Database backup created:[/green] {backup_path}")
         return backup_path
     except Exception as e:
-        console.print(f"[bold red]Error creating backup:[/bold red] {e}")
+        console.print(f"[bold red]Error during backup:[/bold red] {e}")
+        # Attempt to remove potentially incomplete backup file
+        if os.path.exists(backup_path):
+            try:
+                os.remove(backup_path)
+                console.print(f"[yellow]Removed incomplete backup file:[/yellow] {backup_path}")
+            except OSError as remove_err:
+                console.print(f"[bold red]Error removing incomplete backup file:[/bold red] {remove_err}")
         return None
+    finally:
+        # this runs before return `backup_path` or `return None` in the try block
+        if conn:
+            conn.close()
+        if backup_conn:
+            backup_conn.close()
 
 
 def execute_migration_script(db_path: str, script_path: str) -> bool:
