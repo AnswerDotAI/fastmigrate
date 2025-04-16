@@ -30,6 +30,7 @@ def create_db(db_path:Path) -> int:
 
     If a db exists, without a version, raises an sqlite3.Error
     """
+    db_path = Path(db_path)
     if not db_path.exists():
         db_path.parent.mkdir(parents=True, exist_ok=True)
         db_path.touch()
@@ -65,6 +66,7 @@ def _ensure_meta_table(db_path: Path) -> None:
         sqlite3.Error: If unable to read or write to the database
 
     """
+    db_path = Path(db_path)
     # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
@@ -116,6 +118,7 @@ def get_db_version(db_path: Path) -> int:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read the db version because it is not managed
     """
+    db_path = Path(db_path)
     # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
@@ -151,6 +154,7 @@ def _set_db_version(db_path: Path, version: int) -> None:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to write to the database
     """
+    db_path = Path(db_path)
     # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
@@ -190,6 +194,7 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     Returns a dictionary mapping version numbers to file paths.
     Raises ValueError if two scripts have the same version number.
     """
+    migrations_dir = Path(migrations_dir)
     migration_scripts: Dict[int, Path] = {}
     
     if not migrations_dir.exists():
@@ -208,8 +213,6 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     return migration_scripts
 
 
-
-
 def execute_sql_script(db_path: Path, script_path: Path) -> bool:
     """Execute a SQL script against the database.
     
@@ -220,6 +223,8 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
     Returns:
         bool: True if the script executed successfully, False otherwise
     """
+    db_path = Path(db_path)
+    script_path = Path(script_path)
     # Connect directly to the database
     conn = None
     try:
@@ -251,6 +256,8 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
 
 def execute_python_script(db_path: Path, script_path: Path) -> bool:
     """Execute a Python script."""
+    db_path = Path(db_path)
+    script_path = Path(script_path)    
     try:
         subprocess.run(
             [sys.executable, script_path, db_path],
@@ -266,6 +273,8 @@ def execute_python_script(db_path: Path, script_path: Path) -> bool:
 
 def execute_shell_script(db_path: Path, script_path: Path) -> bool:
     """Execute a shell script."""
+    db_path = Path(db_path)
+    script_path = Path(script_path)    
     try:
         subprocess.run(
             ["sh", script_path, db_path],
@@ -291,6 +300,7 @@ def create_db_backup(db_path: Path) -> str | None:
     Returns:
         str: Path to the backup file
     """
+    db_path = Path(db_path)    
     # Only proceed if the database exists
     if not db_path.exists():
         console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
@@ -341,6 +351,8 @@ def create_db_backup(db_path: Path) -> str | None:
 
 def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     """Execute a migration script based on its file extension."""
+    db_path = Path(db_path)
+    script_path = Path(script_path)    
     ext = os.path.splitext(script_path)[1].lower()
     
     if ext == ".sql":
@@ -356,7 +368,7 @@ def execute_migration_script(db_path: Path, script_path: Path) -> bool:
 
 def run_migrations(
     db_path: Path, 
-    migrations_dir: str,
+    migrations_dir: Path,
     verbose: bool = False
 ) -> bool:
     """Run all pending migrations.
@@ -372,6 +384,8 @@ def run_migrations(
     
     Returns True if all migrations succeed, False otherwise.
     """
+    db_path = Path(db_path)
+    migrations_dir = Path(migrations_dir)   
     # Keep track of migration statistics
     stats = {
         "applied": 0,

@@ -69,6 +69,11 @@ def main(
     
     Paths can be provided via CLI options or config file, with CLI options taking precedence.
     """
+    # force conversion in the event a string is passed
+    db = Path(db)
+    migrations = Path(migrations)
+    config_path = Path(config_path)
+
     # Handle version flag first
     if show_version:
         typer.echo(f"FastMigrate version: {VERSION}")
