@@ -132,3 +132,20 @@ Please see the dedicated note on [enrolling an existing db](./enrolling.md).
 
 6. **Backups**: For safety, you can use the `--backup` option to create a backup before running migrations.
 
+### Contributing
+
+To contribute to fastmigrate, create an editable install with the `dev` [dependency group](https://peps.python.org/pep-0735) using your favorite package manager.
+
+For example, with uv (preferred):
+
+```bash
+uv sync
+```
+
+or with pip 25.1:
+
+```bash
+pip install -e . --group dev
+```
+
+We currently don't check in the `uv.lock` file.
