@@ -207,6 +207,38 @@ def test_get_migration_scripts_duplicate_version():
         assert "Duplicate migration version" in str(excinfo.value)
 
 
+def test_create_database_backup():
+    """Test creating a database backup."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        # Create a test database
+        db_path = temp_dir / "test.db"
+        conn = sqlite3.connect(db_path)
+        conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)")
+        conn.execute("INSERT INTO test (value) VALUES ('original data')")
+        conn.commit()
+        conn.close()
+        
+        # Create a backup
+        backup_path = str(create_database_backup(db_path))
+        
+        # Check that the backup file exists
+        assert Path(backup_path).exists()
+        assert backup_path.startswith(str(db_path))
+        assert ".backup" in backup_path
+        
+        # Verify the backup contains the same data
+        conn_backup = sqlite3.connect(backup_path)
+        cursor = conn_backup.execute("SELECT value FROM test")
+        assert cursor.fetchone()[0] == "original data"
+        conn_backup.close()
+        
+        # Test backup of non-existent database
+        non_existent_path = os.path.join(temp_dir, "nonexistent.db")
+        result = create_database_backup(non_existent_path)
+        assert result is None
+
+
 def test_run_migrations_on_unversioned_db():
     """Test that run_migrations fails on an unversioned database."""
     with tempfile.TemporaryDirectory() as temp_dir:

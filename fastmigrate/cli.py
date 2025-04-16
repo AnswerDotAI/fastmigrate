@@ -102,9 +102,9 @@ def main(
         if "paths" in cfg:
             # Only use config values if CLI values are defaults
             if "db" in cfg["paths"] and db == DEFAULT_DB:
-                db_path = cfg["paths"]["db"]
+                db_path = Path(cfg["paths"]["db"])
             if "migrations" in cfg["paths"] and migrations == DEFAULT_MIGRATIONS:
-                migrations_path = cfg["paths"]["migrations"]
+                migrations_path = Path(cfg["paths"]["migrations"])
     
     # Create parent directory
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
