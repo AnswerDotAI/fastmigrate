@@ -1,0 +1,37 @@
+name: pytest CI
+
+on:
+  workflow_dispatch:
+  push:
+    paths: [ 'fastmigrate/**', 'tests/**' ]
+  pull_request:
+    paths: [ 'fastmigrate/**', 'tests/**' ]
+
+jobs:
+  test:
+    name: Continuous Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Install uv with caching and set the python version
+      uses: astral-sh/setup-uv@v2
+      with:
+        version: "0.6.14" # Pin for reproducibility
+        python-version: ${{ matrix.python-version }}
+        enable-cache: true
+        cache-dependency-glob: "pyproject.toml"
+
+    - name: Install fastmigrate dependencies
+      run: uv sync --all-extras --dev
+
+    - name: Run tests
+      run: uv run pytest tests
+      
+    - name: Minimize uv cache
+      run: uv cache prune --ci
