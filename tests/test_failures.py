@@ -27,10 +27,10 @@ def test_sql_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Run migrations - should fail on the second migration
-        result = run_migrations(str(db_path), str(migrations_dir))
+        result = run_migrations(db_path, migrations_dir)
         assert result is False
         
         # Connect to the database and check the version
@@ -65,12 +65,12 @@ def test_cli_sql_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Run the CLI with path to the failure test suite
         result = runner.invoke(app, [
-            "--db", str(db_path),
-            "--migrations", str(FAILURES_DIR / "migrations")
+            "--db", db_path,
+            "--migrations", FAILURES_DIR / "migrations"
         ])
         
         # CLI should exit with non-zero code
@@ -96,7 +96,7 @@ def test_python_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Create a test database with initial successful migration
         initial_migration = migrations_dir / "0001-init.sql"
@@ -116,7 +116,7 @@ sys.exit(1)
         python_migration.chmod(0o755)
         
         # Run migrations - should fail on the Python script
-        result = run_migrations(str(db_path), str(migrations_dir))
+        result = run_migrations(db_path, migrations_dir)
         assert result is False
         
         # Connect to the database and check the version
@@ -140,7 +140,7 @@ def test_shell_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Create a test database with initial successful migration
         initial_migration = migrations_dir / "0001-init.sql"
@@ -159,7 +159,7 @@ exit 2
         shell_migration.chmod(0o755)
         
         # Run migrations - should fail on the shell script
-        result = run_migrations(str(db_path), str(migrations_dir))
+        result = run_migrations(db_path, migrations_dir)
         assert result is False
         
         # Connect to the database and check the version
@@ -189,7 +189,7 @@ def test_testsuite_failure_cli():
             conn.close()
             
             # Initialize the database with _meta table
-            _ensure_meta_table(str(db_path))
+            _ensure_meta_table(db_path)
             
             # Create a temporary migrations directory with just the successful migration
             # and the specific failure migration we want to test
@@ -212,8 +212,8 @@ def test_testsuite_failure_cli():
             
             # Run the CLI
             result = runner.invoke(app, [
-                "--db", str(db_path),
-                "--migrations", str(migrations_dir)
+                "--db", db_path,
+                "--migrations", migrations_dir
             ])
             
             # CLI should exit with non-zero code

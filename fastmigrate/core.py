@@ -184,27 +184,26 @@ def extract_version_from_filename(filename: str) -> Optional[int]:
     return None
 
 
-def get_migration_scripts(migrations_dir: Path) -> Dict[int, str]:
+def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     """Get all valid migration scripts from the migrations directory.
     
     Returns a dictionary mapping version numbers to file paths.
     Raises ValueError if two scripts have the same version number.
     """
-    migration_scripts: Dict[int, str] = {}
+    migration_scripts: Dict[int, Path] = {}
     
     if not migrations_dir.exists():
         return migration_scripts
     
-    for filename in [x for x in migrations_dir.iterdir() if x.is_dir()]:
-        version = extract_version_from_filename(filename)
+    for file_path in [x for x in migrations_dir.iterdir() if x.is_file()]:
+        version = extract_version_from_filename(file_path.name)
         if version is not None:
-            filepath = migrations_dir / filename
             if version in migration_scripts:
                 raise ValueError(
                     f"Duplicate migration version {version}: "
-                    f"{migration_scripts[version]} and {filepath}"
+                    f"{migration_scripts[version]} and {file_path}"
                 )
-            migration_scripts[version] = str(filepath)
+            migration_scripts[version] = file_path
     
     return migration_scripts
 

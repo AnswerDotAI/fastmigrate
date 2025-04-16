@@ -91,9 +91,9 @@ def main(
     migrations_path = migrations
     
     # Apply config file settings only if CLI values are defaults
-    if config_file.exists():
+    if config_path.exists():
         cfg = configparser.ConfigParser()
-        cfg.read(config_file)
+        cfg.read(config_path)
         if "paths" in cfg:
             # Only use config values if CLI values are defaults
             if "db" in cfg["paths"] and db == DEFAULT_DB:
