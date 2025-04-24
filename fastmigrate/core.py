@@ -46,7 +46,7 @@ def ensure_versioned_db(db_path:Path) -> int:
     warnings.warn("ensure_versioned_db is deprecated, as it has been renamed to create_db, which is functionally identical",
                  DeprecationWarning,
                   stacklevel=2)
-    return create_db(db_path)
+    return create_db(Path(db_path))
 
 def _ensure_meta_table(db_path: Path) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
@@ -183,6 +183,7 @@ def _set_db_version(db_path: Path, version: int) -> None:
 
 def extract_version_from_filename(filename: str) -> Optional[int]:
     """Extract the version number from a migration script filename."""
+    filename = str(filename) # Force Path objects to string
     match = re.match(r"^(\d{4})-.*\.(py|sql|sh)$", filename)
     if match:
         return int(match.group(1))
