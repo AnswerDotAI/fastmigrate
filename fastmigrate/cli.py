@@ -13,9 +13,9 @@ import configparser
 from fastmigrate.core import run_migrations, create_db_backup, get_db_version, create_db
 
 # Define constants - single source of truth for default values
-DEFAULT_DB = "data/database.db"
-DEFAULT_MIGRATIONS = "migrations"
-DEFAULT_CONFIG = ".fastmigrate"
+DEFAULT_DB = Path("data/database.db")
+DEFAULT_MIGRATIONS = Path("migrations")
+DEFAULT_CONFIG = Path(".fastmigrate")
 
 # Get the version number
 try:
@@ -69,11 +69,6 @@ def main(
     
     Paths can be provided via CLI options or config file, with CLI options taking precedence.
     """
-    # force conversion in the event a string is passed
-    db = Path(db)
-    migrations = Path(migrations)
-    config_path = Path(config_path)
-
     # Handle version flag first
     if show_version:
         typer.echo(f"FastMigrate version: {VERSION}")
@@ -105,6 +100,7 @@ def main(
                 db_path = Path(cfg["paths"]["db"])
             if "migrations" in cfg["paths"] and migrations == DEFAULT_MIGRATIONS:
                 migrations_path = Path(cfg["paths"]["migrations"])
+
     
     # Create parent directory
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)

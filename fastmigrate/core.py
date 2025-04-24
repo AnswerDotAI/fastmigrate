@@ -33,7 +33,8 @@ def create_db(db_path:Path) -> int:
     db_path = Path(db_path)
     if not db_path.exists():
         db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.touch()
+        conn = sqlite3.connect(db_path)
+        conn.close()
         _ensure_meta_table(db_path)
         return 0
     else:
