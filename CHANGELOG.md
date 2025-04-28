@@ -12,4 +12,6 @@
 - backup operation uses SQLite's backup API, so it no longer requires
   the sqlite3 command line tool to be installed
   
-  
+- API now takes `Path` objects as well as `str` objects, which also
+  enables path completion
+
