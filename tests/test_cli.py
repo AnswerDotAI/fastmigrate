@@ -315,7 +315,7 @@ def test_cli_createdb_flag():
         # Run the CLI with just the --createdb flag
         result = runner.invoke(app, [
             "--db", db_path,
-            "--createdb"
+            "--create_db"
         ])
         
         assert result.exit_code == 0
