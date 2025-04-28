@@ -18,7 +18,8 @@ console = Console()
 
 __all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
            # deprecated
-           "ensure_versioned_db"]
+           "ensure_versioned_db",
+           "create_database_backup"]
 
 def create_db(db_path:Path) -> int:
     """Creates a versioned db, or ensures the existing db is versioned.
@@ -349,6 +350,14 @@ def create_db_backup(db_path: Path) -> Path | None:
             conn.close()
         if backup_conn:
             backup_conn.close()
+
+
+def create_database_backup(db_path:Path) -> Path | None:
+    "See create_database_backup"
+    warnings.warn("create_database_backup is deprecated, as it has been renamed to create_db_backup, which is functionally identical",
+                 DeprecationWarning,
+                  stacklevel=2)
+    return create_db_backup(db_path)
 
 
 def execute_migration_script(db_path: Path, script_path: Path) -> bool:
