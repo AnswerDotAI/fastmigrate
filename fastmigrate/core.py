@@ -291,7 +291,7 @@ def execute_shell_script(db_path: Path, script_path: Path) -> bool:
 
 
 def create_db_backup(db_path: Path) -> Path | None:
-    """Create a backup of the SQLite database file using SQLite's built-in backup command.
+    """Create a backup of the db, or returns None on failure.
 
     Uses the '.backup' SQLite command which ensures a consistent backup even if the
     database is in the middle of a transaction.
@@ -300,7 +300,7 @@ def create_db_backup(db_path: Path) -> Path | None:
         db_path: Path to the SQLite database file
 
     Returns:
-        Path: Path to the backup file
+        Path: Path to the backup file, or None if the backup failed.
     """
     db_path = Path(db_path)
     # Only proceed if the database exists
