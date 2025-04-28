@@ -16,6 +16,7 @@ from fastmigrate.core import (
     extract_version_from_filename,
     get_migration_scripts,
     run_migrations,
+    create_db_backup
 )
 
 
@@ -23,7 +24,7 @@ def test_ensure_meta_table():
     """Test ensuring the _meta table exists."""
     # Create a temp file database for testing
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
-        db_path = temp_file.name
+        db_path = Path(temp_file.name)
         
         # Call _ensure_meta_table on the path
         _ensure_meta_table(db_path)
@@ -61,14 +62,14 @@ def test_ensure_meta_table():
     
     # Test with invalid path to verify exception is raised
     with pytest.raises(FileNotFoundError):
-        _ensure_meta_table("/nonexistent/path/to/db.db")
+        _ensure_meta_table(Path("/nonexistent/path/to/db.db"))
 
 
 def test_get_set_db_version():  # Tests the internal _set_db_version function
     """Test getting and setting the database version."""
     # Create a temp file database for testing
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
-        db_path = temp_file.name
+        db_path = Path(temp_file.name)
         
         # Initialize the database first
         _ensure_meta_table(db_path)
@@ -88,17 +89,17 @@ def test_get_set_db_version():  # Tests the internal _set_db_version function
     
     # Test with nonexistent database to verify exceptions
     with pytest.raises(FileNotFoundError):
-        get_db_version("/nonexistent/path/to/db.db")
+        get_db_version(Path("/nonexistent/path/to/db.db"))
         
     with pytest.raises(FileNotFoundError):
-        _set_db_version("/nonexistent/path/to/db.db", 50)
+        _set_db_version(Path("/nonexistent/path/to/db.db"), 50)
 
 
 def test_ensure_versioned_db():
     """Test ensuring a database is versioned."""
     # Test case 1: Non-existent DB should be created and versioned
     with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = os.path.join(temp_dir, "new.db")
+        db_path = Path(temp_dir) /  "new.db"
         
         # Verify the file doesn't exist yet
         assert not os.path.exists(db_path)
@@ -118,7 +119,7 @@ def test_ensure_versioned_db():
     
     # Test case 2: Existing versioned DB should return its version
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
-        db_path = temp_file.name
+        db_path = Path(temp_file.name)
         
         # Create a versioned database with a specific version
         conn = sqlite3.connect(db_path)
@@ -140,7 +141,7 @@ def test_ensure_versioned_db():
     
     # Test case 3: Existing unversioned DB should raise an error
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
-        db_path = temp_file.name
+        db_path = Path(temp_file.name)
         
         # Create an unversioned database with some random table
         conn = sqlite3.connect(db_path)
@@ -173,6 +174,7 @@ def test_extract_version_from_filename():
 def test_get_migration_scripts():
     """Test getting migration scripts from a directory."""
     with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
         # Create test migration files
         Path(temp_dir, "0001-first.sql").touch()
         Path(temp_dir, "0002-second.py").touch()
@@ -201,7 +203,7 @@ def test_get_migration_scripts_duplicate_version():
         
         # Get migration scripts - should raise ValueError
         with pytest.raises(ValueError) as excinfo:
-            get_migration_scripts(temp_dir)
+            get_migration_scripts(Path(temp_dir))
         
         assert "Duplicate migration version" in str(excinfo.value)
 

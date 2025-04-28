@@ -13,9 +13,9 @@ import configparser
 from fastmigrate.core import run_migrations, create_db_backup, get_db_version, create_db
 
 # Define constants - single source of truth for default values
-DEFAULT_DB = "data/database.db"
-DEFAULT_MIGRATIONS = "migrations"
-DEFAULT_CONFIG = ".fastmigrate"
+DEFAULT_DB = Path("data/database.db")
+DEFAULT_MIGRATIONS = Path("migrations")
+DEFAULT_CONFIG = Path(".fastmigrate")
 
 # Get the version number
 try:
@@ -38,14 +38,14 @@ app = Typer(
 # This command can be used by tests and is also exposed via CLI
 @app.callback(invoke_without_command=True)
 def main(
-    db: str = typer.Option(
+    db: Path = typer.Option(
         DEFAULT_DB, "--db", help="Path to the SQLite database file"
     ),
-    migrations: str = typer.Option(
+    migrations: Path = typer.Option(
         DEFAULT_MIGRATIONS, "--migrations", help="Path to the migrations directory", 
         dir_okay=True, file_okay=False
     ),
-    config_path: str = typer.Option(
+    config_path: Path = typer.Option(
         DEFAULT_CONFIG, "--config", help="Path to config file (default: .fastmigrate)"
     ),
     should_create_db: bool = typer.Option(
@@ -76,7 +76,7 @@ def main(
         
     # Handle check_db_version flag
     if check_db_version:
-        if not os.path.exists(db):
+        if not db.exists():
             typer.echo(f"Database file does not exist: {db}")
             sys.exit(1)
         try:
@@ -87,20 +87,20 @@ def main(
         return
     
     # Read config file paths (if config file exists)
-    config_file = Path(config_path)
     db_path = db
     migrations_path = migrations
     
     # Apply config file settings only if CLI values are defaults
-    if config_file.exists():
+    if config_path.exists():
         cfg = configparser.ConfigParser()
-        cfg.read(config_file)
+        cfg.read(config_path)
         if "paths" in cfg:
             # Only use config values if CLI values are defaults
             if "db" in cfg["paths"] and db == DEFAULT_DB:
-                db_path = cfg["paths"]["db"]
+                db_path = Path(cfg["paths"]["db"])
             if "migrations" in cfg["paths"] and migrations == DEFAULT_MIGRATIONS:
-                migrations_path = cfg["paths"]["migrations"]
+                migrations_path = Path(cfg["paths"]["migrations"])
+
     
     # Create parent directory
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
@@ -109,11 +109,11 @@ def main(
     if should_create_db:
         try:
             # Check if file existed before we call create_db
-            file_existed_before = os.path.exists(db_path)
+            file_existed_before = db_path.exists()
             
             version = create_db(db_path)
             
-            if not os.path.exists(db_path):
+            if not db_path.exists():
                 typer.echo(f"Error: Expected database file to be created at {db_path}")
                 sys.exit(1)
             
@@ -131,7 +131,7 @@ def main(
             sys.exit(1)
     
     # Create a backup if requested
-    if backup and os.path.exists(db_path):
+    if backup and db_path.exists():
         if create_db_backup(db_path) is None:
             sys.exit(1)
     

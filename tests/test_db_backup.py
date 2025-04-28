@@ -3,6 +3,7 @@ import sqlite3
 import os
 import tempfile
 from datetime import datetime
+from pathlib import Path
 
 from fastmigrate.core import create_db_backup
 
@@ -31,7 +32,7 @@ def test_create_db_backup_success(temp_db):
 
     assert backup_path is not None
     assert os.path.exists(backup_path)
-    assert backup_path.startswith(db_path)
+    assert str(backup_path).startswith(db_path)
     assert ".backup" in os.path.basename(backup_path)  # Check basename for .backup
 
     # Verify the backup contains the same data
@@ -90,7 +91,7 @@ def test_create_db_backup_removes_file_on_error(temp_db, mocker):
     real_connect = sqlite3.connect
 
     def mock_connect(db_file_path):
-        if db_file_path == db_path:
+        if Path(db_file_path) == Path(db_path):
             # Return the mock source connection
             return mock_conn
         # Allow real connection for the backup file

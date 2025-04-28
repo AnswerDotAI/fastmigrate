@@ -45,7 +45,7 @@ def test_cli_defaults():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Create a test migration
         with open(migrations_path / "0001-test.sql", "w") as f:
@@ -99,7 +99,7 @@ def test_cli_explicit_paths():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Create a migration
         with open(migrations_dir / "0001-test.sql", "w") as f:
@@ -107,8 +107,8 @@ def test_cli_explicit_paths():
         
         # Run with explicit paths
         result = runner.invoke(app, [
-            "--db", str(db_path),
-            "--migrations", str(migrations_dir)
+            "--db", db_path,
+            "--migrations", migrations_dir
         ])
         
         assert result.exit_code == 0
@@ -141,7 +141,7 @@ def test_cli_backup_option():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Create a test migration
         with open(migrations_path / "0001-test.sql", "w") as f:
@@ -149,8 +149,8 @@ def test_cli_backup_option():
         
         # Run the CLI with --backup option
         result = runner.invoke(app, [
-            "--db", str(db_path),
-            "--migrations", str(migrations_path),
+            "--db", db_path,
+            "--migrations", migrations_path,
             "--backup"
         ])
         
@@ -190,34 +190,32 @@ def test_cli_backup_option():
 def test_cli_config_file():
     """Test CLI with configuration from file."""
     with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
         # Create custom directories
-        temp_dir_path = Path(temp_dir)
-        migrations_dir = temp_dir_path / "custom_migrations"
-        db_dir = temp_dir_path / "custom_data"
+        migrations_dir = temp_dir / "custom_migrations"
+        db_dir = temp_dir / "custom_data"
         migrations_dir.mkdir()
         db_dir.mkdir()
         
         db_path = db_dir / "custom.db"
-        config_path = temp_dir_path / "custom.ini"
+        config_path = temp_dir / "custom.ini"
         
         # Create empty database file
         conn = sqlite3.connect(db_path)
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Create a migration
-        with open(migrations_dir / "0001-test.sql", "w") as f:
-            f.write("CREATE TABLE custom_config (id INTEGER PRIMARY KEY);")
+        (migrations_dir / "0001-test.sql").write_text("CREATE TABLE custom_config (id INTEGER PRIMARY KEY);")
         
         # Create a config file
-        with open(config_path, "w") as f:
-            f.write(f"[paths]\ndb = {db_path}\nmigrations = {migrations_dir}")
-        
+        config_path.write_text(f"[paths]\ndb = {db_path}\nmigrations = {migrations_dir}")
+
         # Run with config file
-        result = runner.invoke(app, ["--config", str(config_path)])
-        
+        result = runner.invoke(app, ["--config", config_path])
+
         assert result.exit_code == 0
         
         # Verify migration was applied
@@ -259,7 +257,7 @@ def test_cli_precedence():
             conn = sqlite3.connect(db)
             conn.close()
             # Initialize the database with _meta table
-            _ensure_meta_table(str(db))
+            _ensure_meta_table(db)
         
         # Create different migrations in each directory
         with open(migrations_config / "0001-config.sql", "w") as f:
@@ -275,9 +273,9 @@ def test_cli_precedence():
         # Run with BOTH config file AND explicit CLI args
         # CLI args should take precedence
         result = runner.invoke(app, [
-            "--config", str(config_path),
-            "--db", str(db_path_cli),
-            "--migrations", str(migrations_cli)
+            "--config", config_path,
+            "--db", db_path_cli,
+            "--migrations", migrations_cli
         ])
         
         assert result.exit_code == 0
@@ -316,8 +314,8 @@ def test_cli_createdb_flag():
         
         # Run the CLI with just the --createdb flag
         result = runner.invoke(app, [
-            "--db", str(db_path),
-            "--createdb"
+            "--db", db_path,
+            "--create_db"
         ])
         
         assert result.exit_code == 0
@@ -345,12 +343,12 @@ def test_check_db_version_option():
         # Create database file with version 42
         conn = sqlite3.connect(db_path)
         conn.close()
-        _ensure_meta_table(str(db_path))
-        _set_db_version(str(db_path), 42)
+        _ensure_meta_table(db_path)
+        _set_db_version(db_path, 42)
         
         # Test with versioned database
         result = runner.invoke(app, [
-            "--db", str(db_path),
+            "--db", db_path,
             "--check_db_version"
         ])
         
@@ -364,7 +362,7 @@ def test_check_db_version_option():
         
         # Test with unversioned database
         result = runner.invoke(app, [
-            "--db", str(unversioned_db),
+            "--db", unversioned_db,
             "--check_db_version"
         ])
         
@@ -374,7 +372,7 @@ def test_check_db_version_option():
         # Test with non-existent database
         nonexistent_db = temp_dir_path / "nonexistent.db"
         result = runner.invoke(app, [
-            "--db", str(nonexistent_db),
+            "--db", nonexistent_db,
             "--check_db_version"
         ])
         
@@ -393,12 +391,12 @@ def test_cli_with_testsuite_a():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        _ensure_meta_table(db_path)
         
         # Run the CLI with explicit paths to the test suite
         result = runner.invoke(app, [
-            "--db", str(db_path),
-            "--migrations", str(CLI_MIGRATIONS_DIR / "migrations")
+            "--db", db_path,
+            "--migrations", CLI_MIGRATIONS_DIR / "migrations"
         ])
         
         assert result.exit_code == 0

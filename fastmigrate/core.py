@@ -20,7 +20,7 @@ __all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
            # deprecated
            "ensure_versioned_db"]
 
-def create_db(db_path:str) -> int:
+def create_db(db_path:Path) -> int:
     """Creates a versioned db, or ensures the existing db is versioned.
 
     If no db exists, creates an EMPTY db with version 0. (This is ready
@@ -30,23 +30,25 @@ def create_db(db_path:str) -> int:
 
     If a db exists, without a version, raises an sqlite3.Error
     """
-    if not os.path.exists(db_path):
-        os.makedirs(os.path.dirname(os.path.abspath(db_path)),exist_ok=True)
-        sqlite3.connect(db_path).close()
+    db_path = Path(db_path)
+    if not db_path.exists():
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(db_path)
+        conn.close()
         _ensure_meta_table(db_path)
         return 0
     else:
         return get_db_version(db_path)
 
 
-def ensure_versioned_db(db_path:str) -> int:
+def ensure_versioned_db(db_path:Path) -> int:
     "See create_db"
     warnings.warn("ensure_versioned_db is deprecated, as it has been renamed to create_db, which is functionally identical",
                  DeprecationWarning,
                   stacklevel=2)
     return create_db(db_path)
 
-def _ensure_meta_table(db_path: str) -> None:
+def _ensure_meta_table(db_path: Path) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
@@ -65,8 +67,9 @@ def _ensure_meta_table(db_path: str) -> None:
         sqlite3.Error: If unable to read or write to the database
 
     """
+    db_path = Path(db_path)
     # First check if the file exists
-    if not os.path.exists(db_path):
+    if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
     
     conn = None
@@ -103,7 +106,7 @@ def _ensure_meta_table(db_path: str) -> None:
             conn.close()
 
 
-def get_db_version(db_path: str) -> int:
+def get_db_version(db_path: Path) -> int:
     """Get the current database version.
     
     Args:
@@ -116,8 +119,9 @@ def get_db_version(db_path: str) -> int:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read the db version because it is not managed
     """
+    db_path = Path(db_path)
     # First check if the file exists
-    if not os.path.exists(db_path):
+    if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
     
     conn = None
@@ -137,7 +141,7 @@ def get_db_version(db_path: str) -> int:
             conn.close()
 
 
-def _set_db_version(db_path: str, version: int) -> None:
+def _set_db_version(db_path: Path, version: int) -> None:
     """Set the database version.
     
     Uses an UPSERT pattern (INSERT OR REPLACE) to ensure we always set the 
@@ -151,8 +155,9 @@ def _set_db_version(db_path: str, version: int) -> None:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to write to the database
     """
+    db_path = Path(db_path)
     # First check if the file exists
-    if not os.path.exists(db_path):
+    if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
     
     conn = None
@@ -178,40 +183,39 @@ def _set_db_version(db_path: str, version: int) -> None:
 
 def extract_version_from_filename(filename: str) -> Optional[int]:
     """Extract the version number from a migration script filename."""
+    filename = str(filename) # Force Path objects to string
     match = re.match(r"^(\d{4})-.*\.(py|sql|sh)$", filename)
     if match:
         return int(match.group(1))
     return None
 
 
-def get_migration_scripts(migrations_dir: str) -> Dict[int, str]:
+def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     """Get all valid migration scripts from the migrations directory.
     
     Returns a dictionary mapping version numbers to file paths.
     Raises ValueError if two scripts have the same version number.
     """
-    migration_scripts: Dict[int, str] = {}
+    migrations_dir = Path(migrations_dir)
+    migration_scripts: Dict[int, Path] = {}
     
-    if not os.path.exists(migrations_dir):
+    if not migrations_dir.exists():
         return migration_scripts
     
-    for filename in os.listdir(migrations_dir):
-        version = extract_version_from_filename(filename)
+    for file_path in [x for x in migrations_dir.iterdir() if x.is_file()]:
+        version = extract_version_from_filename(file_path.name)
         if version is not None:
-            filepath = os.path.join(migrations_dir, filename)
             if version in migration_scripts:
                 raise ValueError(
                     f"Duplicate migration version {version}: "
-                    f"{migration_scripts[version]} and {filepath}"
+                    f"{migration_scripts[version]} and {file_path}"
                 )
-            migration_scripts[version] = filepath
+            migration_scripts[version] = file_path
     
     return migration_scripts
 
 
-
-
-def execute_sql_script(db_path: str, script_path: str) -> bool:
+def execute_sql_script(db_path: Path, script_path: Path) -> bool:
     """Execute a SQL script against the database.
     
     Args:
@@ -221,13 +225,15 @@ def execute_sql_script(db_path: str, script_path: str) -> bool:
     Returns:
         bool: True if the script executed successfully, False otherwise
     """
+    db_path = Path(db_path)
+    script_path = Path(script_path)
     # Connect directly to the database
     conn = None
     try:
         conn = sqlite3.connect(db_path)
         
         # Read script content
-        script_content = Path(script_path).read_text()
+        script_content = script_path.read_text()
         
         # Execute the script
         conn.executescript(script_content)
@@ -250,8 +256,10 @@ def execute_sql_script(db_path: str, script_path: str) -> bool:
             conn.close()
 
 
-def execute_python_script(db_path: str, script_path: str) -> bool:
+def execute_python_script(db_path: Path, script_path: Path) -> bool:
     """Execute a Python script."""
+    db_path = Path(db_path)
+    script_path = Path(script_path)    
     try:
         subprocess.run(
             [sys.executable, script_path, db_path],
@@ -265,8 +273,10 @@ def execute_python_script(db_path: str, script_path: str) -> bool:
         return False
 
 
-def execute_shell_script(db_path: str, script_path: str) -> bool:
+def execute_shell_script(db_path: Path, script_path: Path) -> bool:
     """Execute a shell script."""
+    db_path = Path(db_path)
+    script_path = Path(script_path)    
     try:
         subprocess.run(
             ["sh", script_path, db_path],
@@ -280,7 +290,7 @@ def execute_shell_script(db_path: str, script_path: str) -> bool:
         return False
 
 
-def create_db_backup(db_path: str) -> str | None:
+def create_db_backup(db_path: Path) -> Path | None:
     """Create a backup of the SQLite database file using SQLite's built-in backup command.
 
     Uses the '.backup' SQLite command which ensures a consistent backup even if the
@@ -290,19 +300,20 @@ def create_db_backup(db_path: str) -> str | None:
         db_path: Path to the SQLite database file
 
     Returns:
-        str: Path to the backup file
+        Path: Path to the backup file
     """
+    db_path = Path(db_path)
     # Only proceed if the database exists
-    if not os.path.exists(db_path):
+    if not db_path.exists():
         console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
         return None
 
     # Create a timestamped backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = f"{db_path}.{timestamp}.backup"
+    backup_path = Path(f"{db_path}.{timestamp}.backup")
 
     # Check if the backup file already exists
-    if os.path.exists(backup_path):
+    if backup_path.exists():
         console.print(f"[red]Error:[/red] Backup file already exists: {backup_path}")
         return None
 
@@ -317,7 +328,7 @@ def create_db_backup(db_path: str) -> str | None:
         with backup_conn:
             conn.backup(backup_conn)
 
-        if not os.path.exists(backup_path):
+        if not backup_path.exists():
             raise Exception("Backup file was not created")
 
         console.print(f"[green]Database backup created:[/green] {backup_path}")
@@ -325,9 +336,9 @@ def create_db_backup(db_path: str) -> str | None:
     except Exception as e:
         console.print(f"[bold red]Error during backup:[/bold red] {e}")
         # Attempt to remove potentially incomplete backup file
-        if os.path.exists(backup_path):
+        if backup_path.exists():
             try:
-                os.remove(backup_path)
+                backup_path.unlink() # remove the file
                 console.print(f"[yellow]Removed incomplete backup file:[/yellow] {backup_path}")
             except OSError as remove_err:
                 console.print(f"[bold red]Error removing incomplete backup file:[/bold red] {remove_err}")
@@ -340,8 +351,10 @@ def create_db_backup(db_path: str) -> str | None:
             backup_conn.close()
 
 
-def execute_migration_script(db_path: str, script_path: str) -> bool:
+def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     """Execute a migration script based on its file extension."""
+    db_path = Path(db_path)
+    script_path = Path(script_path)    
     ext = os.path.splitext(script_path)[1].lower()
     
     if ext == ".sql":
@@ -356,8 +369,8 @@ def execute_migration_script(db_path: str, script_path: str) -> bool:
 
 
 def run_migrations(
-    db_path: str, 
-    migrations_dir: str,
+    db_path: Path, 
+    migrations_dir: Path,
     verbose: bool = False
 ) -> bool:
     """Run all pending migrations.
@@ -373,6 +386,8 @@ def run_migrations(
     
     Returns True if all migrations succeed, False otherwise.
     """
+    db_path = Path(db_path)
+    migrations_dir = Path(migrations_dir)   
     # Keep track of migration statistics
     stats = {
         "applied": 0,
@@ -381,7 +396,7 @@ def run_migrations(
     }
     
     # Check if database file exists
-    if not os.path.exists(db_path):
+    if not db_path.exists():
         console.print(f"[bold red]Error:[/bold red] Database file does not exist: {db_path}")
         console.print("The database file must exist before running migrations.")
         return False
@@ -432,7 +447,7 @@ that with fastmigrate.core._set_db_version()""")
         start_time = time.time()
         for version in sorted_versions:
             script_path = pending_migrations[version]
-            script_name = os.path.basename(script_path)
+            script_name = script_path.name
             
             # Start timing this migration
             migration_start = time.time()

@@ -1,6 +1,7 @@
+from pathlib import Path
 from apswutils import Database, Table  # type: ignore
 
-def recreate_table(db_path:str,         # db path
+def recreate_table(db_path:Path,         # db path
                    table_name:str,      # name of table to update by re-creating
                    new_column_defs:str  # updated column definitions
                    ) -> None:
