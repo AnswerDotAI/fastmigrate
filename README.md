@@ -87,7 +87,7 @@ Here are some commands:
 
 1. **Create Database**:
    ```
-   fastmigrate --createdb --db /path/to/data.db
+   fastmigrate --create_db --db /path/to/data.db
    ```
    If no database is there, creates an empty database with version=0, If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an error code. This is equivalent to calling `fastmigrate.create_db()`
 

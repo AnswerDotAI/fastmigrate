@@ -420,7 +420,7 @@ def run_migrations(
 This is because it is not managed by fastmigrate. Please do one of the following:
 
 1. Create a new versioned db using fastmigrate.create_db() or
-`fastmigrate --createdb`
+`fastmigrate --create_db`
             
 2. Manually verify your existing db's data matches a version defined
 by your migration scripts, and then set your db's version to reflect

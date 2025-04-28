@@ -105,7 +105,7 @@ def main(
     # Create parent directory
     os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
     
-    # Handle --createdb/--create_db flag
+    # Handle --create_db flag
     if should_create_db:
         try:
             # Check if file existed before we call create_db
