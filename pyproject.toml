@@ -22,7 +22,7 @@ dev = [
 ]
 
 [project.scripts]
-fastmigrate = "fastmigrate.cli:main_wrapper"
+fastmigrate = "fastmigrate.cli:app"
 
 [tool.pytest]
 testpaths = ["tests"]
