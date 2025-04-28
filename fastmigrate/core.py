@@ -290,7 +290,7 @@ def execute_shell_script(db_path: Path, script_path: Path) -> bool:
         return False
 
 
-def create_db_backup(db_path: Path) -> str | None:
+def create_db_backup(db_path: Path) -> Path | None:
     """Create a backup of the SQLite database file using SQLite's built-in backup command.
 
     Uses the '.backup' SQLite command which ensures a consistent backup even if the
@@ -300,9 +300,9 @@ def create_db_backup(db_path: Path) -> str | None:
         db_path: Path to the SQLite database file
 
     Returns:
-        str: Path to the backup file
+        Path: Path to the backup file
     """
-    db_path = Path(db_path)    
+    db_path = Path(db_path)
     # Only proceed if the database exists
     if not db_path.exists():
         console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
@@ -310,10 +310,10 @@ def create_db_backup(db_path: Path) -> str | None:
 
     # Create a timestamped backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = f"{db_path}.{timestamp}.backup"
+    backup_path = Path(f"{db_path}.{timestamp}.backup")
 
     # Check if the backup file already exists
-    if os.path.exists(backup_path):
+    if backup_path.exists():
         console.print(f"[red]Error:[/red] Backup file already exists: {backup_path}")
         return None
 
@@ -328,7 +328,7 @@ def create_db_backup(db_path: Path) -> str | None:
         with backup_conn:
             conn.backup(backup_conn)
 
-        if not os.path.exists(backup_path):
+        if not backup_path.exists():
             raise Exception("Backup file was not created")
 
         console.print(f"[green]Database backup created:[/green] {backup_path}")
@@ -336,9 +336,9 @@ def create_db_backup(db_path: Path) -> str | None:
     except Exception as e:
         console.print(f"[bold red]Error during backup:[/bold red] {e}")
         # Attempt to remove potentially incomplete backup file
-        if os.path.exists(backup_path):
+        if backup_path.exists():
             try:
-                os.remove(backup_path)
+                backup_path.unlink() # remove the file
                 console.print(f"[yellow]Removed incomplete backup file:[/yellow] {backup_path}")
             except OSError as remove_err:
                 console.print(f"[bold red]Error removing incomplete backup file:[/bold red] {remove_err}")

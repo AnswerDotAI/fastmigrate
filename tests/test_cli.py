@@ -187,48 +187,49 @@ def test_cli_backup_option():
         conn.close()
 
 
-def test_cli_config_file(tmp_path):
+def test_cli_config_file():
     """Test CLI with configuration from file."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        # Create custom directories
+        migrations_dir = temp_dir / "custom_migrations"
+        db_dir = temp_dir / "custom_data"
+        migrations_dir.mkdir()
+        db_dir.mkdir()
+        
+        db_path = db_dir / "custom.db"
+        config_path = temp_dir / "custom.ini"
+        
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
+        # Initialize the database with _meta table
+        _ensure_meta_table(db_path)
+        
+        # Create a migration
+        (migrations_dir / "0001-test.sql").write_text("CREATE TABLE custom_config (id INTEGER PRIMARY KEY);")
+        
+        # Create a config file
+        config_path.write_text(f"[paths]\ndb = {db_path}\nmigrations = {migrations_dir}")
 
-    # Create custom directories
-    migrations_dir = tmp_path / "custom_migrations"
-    db_dir = tmp_path / "custom_data"
-    migrations_dir.mkdir()
-    db_dir.mkdir()
-    
-    db_path = db_dir / "custom.db"
-    config_path = tmp_path / "custom.ini"
-    
-    # Create empty database file
-    conn = sqlite3.connect(db_path)
-    conn.close()
-    
-    # Initialize the database with _meta table
-    _ensure_meta_table(db_path)
-    
-    # Create a migration
-    (migrations_dir / "0001-test.sql").write_text("CREATE TABLE custom_config (id INTEGER PRIMARY KEY);")
-    
-    # Create a config file
-    config_path.write_text(f"[paths]\ndb = {db_path}\nmigrations = {migrations_dir}")
+        # Run with config file
+        result = runner.invoke(app, ["--config", config_path])
 
-    # Run with config file
-    result = runner.invoke(app, ["--config", config_path])
-
-    assert result.exit_code == 0
-    
-    # Verify migration was applied
-    conn = sqlite3.connect(db_path)
-    cursor = conn.execute("SELECT version FROM _meta")
-    assert cursor.fetchone()[0] == 1
-    
-    # Check the migration was applied
-    cursor = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='custom_config'"
-    )
-    assert cursor.fetchone() is not None
-    
-    conn.close()
+        assert result.exit_code == 0
+        
+        # Verify migration was applied
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT version FROM _meta")
+        assert cursor.fetchone()[0] == 1
+        
+        # Check the migration was applied
+        cursor = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='custom_config'"
+        )
+        assert cursor.fetchone() is not None
+        
+        conn.close()
 
 
 def test_cli_precedence():
