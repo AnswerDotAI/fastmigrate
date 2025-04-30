@@ -52,7 +52,7 @@ def _get_config(
 @call_parse
 def backup_db(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file (default: .fastmigrate)
+    config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Create a backup of the SQLite database."""
     db_path, migrations_path = _get_config(config_path, db)
@@ -62,7 +62,7 @@ def backup_db(
 @call_parse
 def check_version(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file (default: .fastmigrate)
+    config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Show the version of fastmigrate and the SQLite database."""
     print(f"FastMigrate version: {VERSION}")    
@@ -84,7 +84,7 @@ def check_version(
 @call_parse
 def create_db(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file (default: .fastmigrate)
+    config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Create a new SQLite database, with versioning build-in.
         Existing databases will not be modified."""
@@ -117,7 +117,7 @@ def create_db(
 def run_migrations(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
-    config_path: Path = DEFAULT_CONFIG # Path to config file (default: .fastmigrate)
+    config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Run SQLite database migrations."""
     db_path, migrations_path = _get_config(config_path, db, migrations)

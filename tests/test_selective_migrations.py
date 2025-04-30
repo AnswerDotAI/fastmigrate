@@ -3,18 +3,16 @@
 import os
 import sqlite3
 import tempfile
+import subprocess
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
 
-from fastmigrate.cli import app
 from fastmigrate.core import run_migrations, _ensure_meta_table
 
 
 # Path to the selective migrations directory
 SELECTIVE_DIR = Path(__file__).parent / "test_selective_migrations"
-runner = CliRunner()
 
 
 def test_selective_migrations_core():
@@ -231,12 +229,12 @@ def test_cli_selective_migrations():
             """)
         
         # Run first migration only
-        result = runner.invoke(app, [
-            "migrate",
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--db", str(db_path),
             "--migrations", str(migrations_dir)
-        ])
-        assert result.exit_code == 0
+        ], capture_output=True, text=True)
+        assert result.returncode == 0
         
         # Check that only migration 1 was applied
         conn = sqlite3.connect(db_path)
@@ -273,12 +271,12 @@ if __name__ == "__main__":
         (migrations_dir / "0010-tenth.py").chmod(0o755)
         
         # Second run: should skip migrations with versions <= 5 and only apply 0010
-        result = runner.invoke(app, [
-            "migrate",
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--db", str(db_path),
             "--migrations", str(migrations_dir)
-        ])
-        assert result.exit_code == 0
+        ], capture_output=True, text=True)
+        assert result.returncode == 0
         
         # Verify the final state
         conn = sqlite3.connect(db_path)
