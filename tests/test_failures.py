@@ -69,6 +69,7 @@ def test_cli_sql_failure():
         
         # Run the CLI with path to the failure test suite
         result = runner.invoke(app, [
+            "migrate",
             "--db", db_path,
             "--migrations", FAILURES_DIR / "migrations"
         ])
@@ -212,6 +213,7 @@ def test_testsuite_failure_cli():
             
             # Run the CLI
             result = runner.invoke(app, [
+                "migrate",
                 "--db", db_path,
                 "--migrations", migrations_dir
             ])

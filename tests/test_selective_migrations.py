@@ -232,6 +232,7 @@ def test_cli_selective_migrations():
         
         # Run first migration only
         result = runner.invoke(app, [
+            "migrate",
             "--db", str(db_path),
             "--migrations", str(migrations_dir)
         ])
@@ -273,6 +274,7 @@ if __name__ == "__main__":
         
         # Second run: should skip migrations with versions <= 5 and only apply 0010
         result = runner.invoke(app, [
+            "migrate",
             "--db", str(db_path),
             "--migrations", str(migrations_dir)
         ])

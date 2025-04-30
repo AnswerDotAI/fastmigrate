@@ -10,7 +10,7 @@ import typer
 from typer import Typer
 import configparser
 
-from fastmigrate.core import run_migrations, create_db_backup, get_db_version, create_db
+from fastmigrate.core import run_migrations, create_db_backup, get_db_version, create_db as create_db_core
 
 # Define constants - single source of truth for default values
 DEFAULT_DB = Path("data/database.db")
@@ -29,23 +29,14 @@ except ImportError:
     except:
         VERSION = "unknown"
 
-_help = """FastMigrate applies migration scripts to a SQLite database in sequential order.
-It keeps track of which migrations have been applied using a _meta table
-in the database, and only runs scripts that have not yet been applied.
-
-Paths can be provided via CLI options or config file, with CLI options taking precedence.
-"""
 
 # Create a global app instance used by both tests and CLI
 app = Typer(
-    help=_help,
+    help="Structured migration of data in SQLite databases",
     context_settings={"help_option_names": ["-h", "--help"]}
 )
 
-
-
-def _get_config(config_path: Path, db: Path|None=None, migrations: Path|None=None) -> tuple[Path|None]:
-    db_path, migrations_path = None, None            
+def _get_config(config_path: Path, db: Path|None=None, migrations: Path|None=None) -> tuple[Path|None]:        
     if config_path.exists():
         cfg = configparser.ConfigParser()
         cfg.read(config_path)
@@ -53,8 +44,12 @@ def _get_config(config_path: Path, db: Path|None=None, migrations: Path|None=Non
             # Only use config values if CLI values are defaults
             if "db" in cfg["paths"] and db == DEFAULT_DB:
                 db_path = Path(cfg["paths"]["db"])
+            else:
+                db_path = db
             if "migrations" in cfg["paths"] and migrations == DEFAULT_MIGRATIONS:
                 migrations_path = Path(cfg["paths"]["migrations"])
+            else:
+                migrations_path = migrations
     else:
         db_path = db
         migrations_path = migrations
@@ -91,7 +86,7 @@ def create_db(
         # Check if file existed before we call create_db
         file_existed_before = db_path.exists()
     
-        version = create_db(db_path)
+        version = create_db_core(db_path)
     
         if not db_path.exists():
             typer.echo(f"Error: Expected database file to be created at {db_path}")
@@ -111,20 +106,7 @@ def create_db(
         sys.exit(1)    
 
 @app.command()
-def enroll_db(
-    db: Path = typer.Option(
-        DEFAULT_DB, "--db", help="Path to the SQLite database file"
-    ),
-    config_path: Path = typer.Option(
-        DEFAULT_CONFIG, "--config", help="Path to config file (default: .fastmigrate)"
-    )
-) -> None:
-    """Enroll an existing SQLite database into the versioning system."""
-    # This function is a placeholder for future use
-    db_path, _ = _get_config(config_path, db)
-
-@app.command()
-def run_migrate(
+def migrate(
     db: Path = typer.Option(
         DEFAULT_DB, "--db", help="Path to the SQLite database file"
     ),
@@ -137,8 +119,8 @@ def run_migrate(
     )
 ) -> None:
     """Run SQLite database migrations."""
-    db_path, migrations_path = _get_config(config_path, db)
-    success = run_migrations(db_path, migrations_path, verbose=True)
+    db_path, migrations_path = _get_config(config_path, db, migrations)
+    success = run_migrations(db_path, migrations_path, verbose=True)    
     if not success:
         sys.exit(1)
 
@@ -151,8 +133,8 @@ def version(
         DEFAULT_CONFIG, "--config", help="Path to config file (default: .fastmigrate)"
     )
 ) -> None:
-    """Show the version of the SQLite database."""
-    typer.echo(f"FastMigrate version: {VERSION}")
+    """Show the version of fastmigrate and the SQLite database."""
+    typer.echo(f"FastMigrate version: {VERSION}")    
     db_path, _ = _get_config(config_path, db)
     if db_path is None:
         typer.echo("No database file specified.")
@@ -161,11 +143,11 @@ def version(
         typer.echo(f"Database file does not exist: {db_path}")
         sys.exit(1)
     try:
-        db_version = get_db_version(ddb_pathb)
+        db_version = get_db_version(db_path)
         typer.echo(f"Database version: {db_version}")
     except sqlite3.Error:
         typer.echo("Database is unversioned (no _meta table)")
-    return
+    return   
 
 
 if __name__ == "__main__":

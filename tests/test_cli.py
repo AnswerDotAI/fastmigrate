@@ -31,55 +31,11 @@ def test_cli_help():
 
 def test_cli_defaults():
     """Test CLI with default arguments."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create paths in the temporary directory
-        temp_dir_path = Path(temp_dir)
-        migrations_path = temp_dir_path / "migrations"
-        data_path = temp_dir_path / "data"
-        migrations_path.mkdir()
-        data_path.mkdir()
-        
-        # Create empty database file
-        db_path = data_path / "database.db"
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
-        
-        # Create a test migration
-        with open(migrations_path / "0001-test.sql", "w") as f:
-            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
-        
-        # Create a config file
-        with open(temp_dir_path / ".fastmigrate", "w") as f:
-            f.write("[paths]\ndb = data/database.db\nmigrations = migrations")
-        
-        # Store original directory and change to temp directory
-        # so defaults resolve relative to it
-        original_dir = os.getcwd()
-        os.chdir(temp_dir_path)
-        
-        try:
-            # Run the CLI
-            result = runner.invoke(app)
-            
-            assert result.exit_code == 0
-            
-            # Verify migration was applied
-            conn = sqlite3.connect(db_path)
-            cursor = conn.execute("SELECT version FROM _meta")
-            assert cursor.fetchone()[0] == 1
-            
-            # Check the migration was applied
-            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
-            assert cursor.fetchone() is not None
-            
-            conn.close()
-        
-        finally:
-            # ALWAYS return to original directory, even if test fails
-            os.chdir(original_dir)
+    result = runner.invoke(app)
+    assert result.exit_code == 2
+    # Receiving the default values from typer
+    assert "[OPTIONS] COMMAND [ARGS]" in result.stdout
+
 
 
 def test_cli_explicit_paths():
@@ -107,6 +63,7 @@ def test_cli_explicit_paths():
         
         # Run with explicit paths
         result = runner.invoke(app, [
+            "migrate",
             "--db", db_path,
             "--migrations", migrations_dir
         ])
@@ -147,11 +104,17 @@ def test_cli_backup_option():
         with open(migrations_path / "0001-test.sql", "w") as f:
             f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
         
-        # Run the CLI with --backup option
+        # Run the backup
         result = runner.invoke(app, [
+            "backup",
+            "--db", db_path
+        ])
+
+        # Run the migration
+        result = runner.invoke(app, [
+            "migrate",
             "--db", db_path,
             "--migrations", migrations_path,
-            "--backup"
         ])
         
         assert result.exit_code == 0
@@ -175,11 +138,11 @@ def test_cli_backup_option():
         # But the original DB should have both tables
         conn = sqlite3.connect(db_path)
         
-        # Should have the initial table
+        # Original should have the initial table
         cursor = conn.execute("SELECT value FROM initial")
         assert cursor.fetchone()[0] == "initial data"
         
-        # Should have the test table from the migration
+        # Original should have the test table from the migration
         cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
         assert cursor.fetchone() is not None
         
@@ -214,7 +177,7 @@ def test_cli_config_file():
         config_path.write_text(f"[paths]\ndb = {db_path}\nmigrations = {migrations_dir}")
 
         # Run with config file
-        result = runner.invoke(app, ["--config", config_path])
+        result = runner.invoke(app, ["migrate", "--config", config_path])
 
         assert result.exit_code == 0
         
@@ -273,6 +236,7 @@ def test_cli_precedence():
         # Run with BOTH config file AND explicit CLI args
         # CLI args should take precedence
         result = runner.invoke(app, [
+            "migrate",
             "--config", config_path,
             "--db", db_path_cli,
             "--migrations", migrations_cli
@@ -314,8 +278,8 @@ def test_cli_createdb_flag():
         
         # Run the CLI with just the --createdb flag
         result = runner.invoke(app, [
+            "create-db",
             "--db", db_path,
-            "--create_db"
         ])
         
         assert result.exit_code == 0
@@ -348,8 +312,8 @@ def test_check_db_version_option():
         
         # Test with versioned database
         result = runner.invoke(app, [
-            "--db", db_path,
-            "--check_db_version"
+            "version",
+            "--db", db_path
         ])
         
         assert result.exit_code == 0
@@ -362,8 +326,8 @@ def test_check_db_version_option():
         
         # Test with unversioned database
         result = runner.invoke(app, [
+            "version",            
             "--db", unversioned_db,
-            "--check_db_version"
         ])
         
         assert result.exit_code == 0
@@ -372,8 +336,8 @@ def test_check_db_version_option():
         # Test with non-existent database
         nonexistent_db = temp_dir_path / "nonexistent.db"
         result = runner.invoke(app, [
+            "version",            
             "--db", nonexistent_db,
-            "--check_db_version"
         ])
         
         assert result.exit_code == 1
@@ -395,6 +359,7 @@ def test_cli_with_testsuite_a():
         
         # Run the CLI with explicit paths to the test suite
         result = runner.invoke(app, [
+            "migrate",
             "--db", db_path,
             "--migrations", CLI_MIGRATIONS_DIR / "migrations"
         ])
