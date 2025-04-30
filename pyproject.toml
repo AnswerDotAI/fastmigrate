@@ -10,7 +10,6 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "typer>=0.9.0",
     "apswutils>=0.0.2",
 ]
 
@@ -22,7 +21,10 @@ dev = [
 ]
 
 [project.scripts]
-fastmigrate = "fastmigrate.cli:app"
+fastmigrate_backup_db = "fastmigrate.cli:backup_db"
+fastmigrate_check_version = "fastmigrate.cli:check_version"
+fastmigrate_create_db = "fastmigrate.cli:create_db"
+fastmigrate_run_migrations = "fastmigrate.cli:run_migrations"
 
 [tool.pytest]
 testpaths = ["tests"]
