@@ -268,7 +268,7 @@ def test_cli_precedence():
 
 
 def test_cli_createdb_flag():
-    """Test the --createdb flag properly initializes a database with _meta table."""
+    """Test the --create_db flag properly initializes a database with _meta table."""
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_dir_path = Path(temp_dir)
         db_path = temp_dir_path / "new_db.db"
@@ -276,7 +276,7 @@ def test_cli_createdb_flag():
         # Verify the database doesn't exist yet
         assert not db_path.exists()
         
-        # Run the CLI with just the --createdb flag
+        # Run the CLI with just the --create_db flag
         result = runner.invoke(app, [
             "create-db",
             "--db", db_path,
