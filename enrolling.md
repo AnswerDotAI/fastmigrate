@@ -2,7 +2,7 @@
 
 If you use fastmigrate with valid migration scripts, fastmigrate can guarantee the version of your database presented to your application code. This is the value of managed migrations.
 
-However, to provide this guarantee, you need your database to be managed by fastmigrate. If you created the database with fastmigrate (using `create_db`), then it is managed.
+However, to provide this guarantee, you need your database to be managed by fastmigrate. If you created the database with fastmigrate (using `create_db` or the `fastmigrate_create_db` CLI command), then it is managed.
 
 But what if you are starting with an application built outside of fastmigrate, and you want to _enroll_ the database in fastmigrate? Here is how to think about it, and how to do it correctly:
 
