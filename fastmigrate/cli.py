@@ -27,10 +27,26 @@ except ImportError:
         VERSION = "unknown"
 
 def _get_config(
-    config_path: Path=None,
-    db: Path=None,
-    migrations: Path=None
-    ) -> tuple[Path|None]:        
+        config_path: Path,     # config file, which may not exist
+        db: Path,              # db file, which need not exist
+        migrations: Path=DEFAULT_MIGRATIONS # migrations dir, which may not exist
+    ) -> tuple[Path, Path]:
+    """Performs final value resolution for db and migrations.
+
+    CLI args > config file > default values.
+
+    This function's arguments are values for db and migrations, which
+    are either from the CLI or else are the default values to use when
+    no value is supplied at the CLI nor by a config file.
+
+    If a config file exists, and the argument values are the default
+    values, then we _assume_ the argument values come from the
+    defaults, and then the config file values are used.
+
+    (Consequently, there is no way for the user to explicitly specify
+    a value which is equal to the default value, and to have that take
+    precedence over a conflicting value in the config file!)
+    """
     if config_path.exists():
         cfg = configparser.ConfigParser()
         cfg.read(config_path)
@@ -55,7 +71,7 @@ def backup_db(
     config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Create a backup of the SQLite database."""
-    db_path, migrations_path = _get_config(config_path, db)
+    db_path, _ = _get_config(config_path, db)
     if core.create_db_backup(db_path) is None:
         sys.exit(1) 
 
@@ -67,9 +83,6 @@ def check_version(
     """Show the version of fastmigrate and the SQLite database."""
     print(f"FastMigrate version: {VERSION}")    
     db_path, _ = _get_config(config_path, db)
-    if db_path is None:
-        print("No database file specified.")
-        sys.exit(1)
     if not db_path.exists():
         print(f"Database file does not exist: {db_path}")
         sys.exit(1)
@@ -83,12 +96,12 @@ def check_version(
 
 @call_parse
 def create_db(
-    db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file
+        db: Path = DEFAULT_DB, # Path to SQLite db file, which may not exist
+        config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Create a new SQLite database, with versioning build-in.
         Existing databases will not be modified."""
-    db_path, migrations_path = _get_config(config_path, db)
+    db_path, _ = _get_config(config_path, db)
     print(f"Creating database at {db_path}")
     try:
         # Check if file existed before we call create_db
@@ -111,7 +124,7 @@ def create_db(
         sys.exit(1)
     except Exception as e:
         print(f"Unexpected error: {e}")
-        sys.exit(1)    
+        sys.exit(1)
 
 @call_parse
 def run_migrations(
