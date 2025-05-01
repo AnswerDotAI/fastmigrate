@@ -419,12 +419,13 @@ def run_migrations(
 
 This is because it is not managed by fastmigrate. Please do one of the following:
 
-1. Create a new versioned db using fastmigrate.create_db() or
-`fastmigrate --create_db`
+1. Create a new, managed db using `fastmigrate.create_db()` or
+`fastmigrate_create_db`
             
-2. Manually verify your existing db's data matches a version defined
-by your migration scripts, and then set your db's version to reflect
-that with fastmigrate.core._set_db_version()""")
+2. Enroll your existing database, by manually verifying your existing
+db's data matches a version defined by your migration scripts, and
+then setting your db's version explicitly with
+`fastmigrate.core._set_db_version()`. See enrolling.md for guidance.""")
             return False
         
         # Get current version
