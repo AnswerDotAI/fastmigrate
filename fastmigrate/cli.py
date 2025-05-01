@@ -70,7 +70,11 @@ def backup_db(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
-    """Create a backup of the SQLite database."""
+    """Create a backup of the SQLite database.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.
+    """
     db_path, _ = _get_config(config_path, db)
     if core.create_db_backup(db_path) is None:
         sys.exit(1) 
@@ -80,7 +84,11 @@ def check_version(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
-    """Show the version of fastmigrate and the SQLite database."""
+    """Show the version of fastmigrate and the SQLite database.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.
+    """
     print(f"FastMigrate version: {VERSION}")    
     db_path, _ = _get_config(config_path, db)
     if not db_path.exists():
@@ -100,7 +108,12 @@ def create_db(
         config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
     """Create a new SQLite database, with versioning build-in.
-        Existing databases will not be modified."""
+
+    Existing databases will never be modified.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.
+    """
     db_path, _ = _get_config(config_path, db)
     print(f"Creating database at {db_path}")
     try:
@@ -132,7 +145,11 @@ def run_migrations(
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
     config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
-    """Run SQLite database migrations."""
+    """Run SQLite database migrations.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.
+    """
     db_path, migrations_path = _get_config(config_path, db, migrations)
     success = core.run_migrations(db_path, migrations_path, verbose=True)    
     if not success:
