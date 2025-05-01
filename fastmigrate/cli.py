@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 import sqlite3
-from fastcore.script import call_parse
+from fastcore.script import call_parse # type:ignore
 import configparser
 
 from fastmigrate import core
