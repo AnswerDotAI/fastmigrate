@@ -7,80 +7,22 @@ from pathlib import Path
 import io
 import sys
 from unittest.mock import patch
+import subprocess
 
-from typer.testing import CliRunner
-
-from fastmigrate.cli import app
+from fastmigrate.cli import backup_db, check_version, create_db, run_migrations
 from fastmigrate.core import _ensure_meta_table, _set_db_version
-
-
-runner = CliRunner()
 
 # Path to the test migrations directory
 CLI_MIGRATIONS_DIR = Path(__file__).parent / "test_cli"
 
 
-def test_cli_help():
-    """Test the CLI help output."""
-    result = runner.invoke(app, ["--help"])
-    assert result.exit_code == 0
-    # The help text moved to the docstring of the main function
-    # After our refactoring, this might be displayed differently
-    assert "Structured migration of data in SQLite databases" in result.stdout
-
-
-def test_cli_defaults():
-    """Test CLI with default arguments."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create paths in the temporary directory
-        temp_dir_path = Path(temp_dir)
-        migrations_path = temp_dir_path / "migrations"
-        data_path = temp_dir_path / "data"
-        migrations_path.mkdir()
-        data_path.mkdir()
-        
-        # Create empty database file
-        db_path = data_path / "database.db"
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
-        
-        # Create a test migration
-        with open(migrations_path / "0001-test.sql", "w") as f:
-            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
-        
-        # Create a config file
-        with open(temp_dir_path / ".fastmigrate", "w") as f:
-            f.write("[paths]\ndb = data/database.db\nmigrations = migrations")
-        
-        # Store original directory and change to temp directory
-        # so defaults resolve relative to it
-        original_dir = os.getcwd()
-        os.chdir(temp_dir_path)
-        
-        try:
-            # Run the CLI
-            result = runner.invoke(app)
-            
-            assert result.exit_code == 0
-            
-            # Verify migration was applied
-            conn = sqlite3.connect(db_path)
-            cursor = conn.execute("SELECT version FROM _meta")
-            assert cursor.fetchone()[0] == 1
-            
-            # Check the migration was applied
-            cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
-            assert cursor.fetchone() is not None
-            
-            conn.close()
-        
-        finally:
-            # ALWAYS return to original directory, even if test fails
-            os.chdir(original_dir)
-
+def test_cli_help_backup_db():
+    """Test the CLI help output for ."""
+    # Capture standard output
+    result = subprocess.run(['fastmigrate_backup_db', '--help'], 
+                           capture_output=True, text=True)
+    assert result.returncode == 0                           
+    assert "usage: fastmigrate_backup_db [-h] [--db DB]" in result.stdout
 
 def test_cli_explicit_paths():
     """Test CLI with explicit path arguments."""
@@ -106,12 +48,13 @@ def test_cli_explicit_paths():
             f.write("CREATE TABLE custom (id INTEGER PRIMARY KEY);")
         
         # Run with explicit paths
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--db", db_path,
             "--migrations", migrations_dir
         ])
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         
         # Verify migration was applied
         conn = sqlite3.connect(db_path)
@@ -147,14 +90,20 @@ def test_cli_backup_option():
         with open(migrations_path / "0001-test.sql", "w") as f:
             f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
         
-        # Run the CLI with --backup option
-        result = runner.invoke(app, [
+        # Run the backup
+        result = subprocess.run([
+            "fastmigrate_backup_db",
+            "--db", db_path
+        ])
+
+        # Run the migration
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--db", db_path,
             "--migrations", migrations_path,
-            "--backup"
         ])
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         
         # Check that a backup file was created
         backup_files = list(temp_dir_path.glob("*.backup"))
@@ -175,11 +124,11 @@ def test_cli_backup_option():
         # But the original DB should have both tables
         conn = sqlite3.connect(db_path)
         
-        # Should have the initial table
+        # Original should have the initial table
         cursor = conn.execute("SELECT value FROM initial")
         assert cursor.fetchone()[0] == "initial data"
         
-        # Should have the test table from the migration
+        # Original should have the test table from the migration
         cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
         assert cursor.fetchone() is not None
         
@@ -214,9 +163,9 @@ def test_cli_config_file():
         config_path.write_text(f"[paths]\ndb = {db_path}\nmigrations = {migrations_dir}")
 
         # Run with config file
-        result = runner.invoke(app, ["--config", config_path])
+        result = subprocess.run(["fastmigrate_run_migrations", "--config", config_path])
 
-        assert result.exit_code == 0
+        assert result.returncode == 0
         
         # Verify migration was applied
         conn = sqlite3.connect(db_path)
@@ -272,13 +221,14 @@ def test_cli_precedence():
         
         # Run with BOTH config file AND explicit CLI args
         # CLI args should take precedence
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--config", config_path,
             "--db", db_path_cli,
             "--migrations", migrations_cli
         ])
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         
         # Verify migration was applied to the CLI database, not the config one
         # Config DB should be untouched
@@ -313,12 +263,12 @@ def test_cli_createdb_flag():
         assert not db_path.exists()
         
         # Run the CLI with just the --create_db flag
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_create_db",
             "--db", db_path,
-            "--create_db"
         ])
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         
         # Verify database was created
         assert db_path.exists()
@@ -347,12 +297,12 @@ def test_check_db_version_option():
         _set_db_version(db_path, 42)
         
         # Test with versioned database
-        result = runner.invoke(app, [
-            "--db", db_path,
-            "--check_db_version"
-        ])
+        result = subprocess.run([
+            "fastmigrate_check_version",
+            "--db", db_path
+        ], capture_output=True, text=True)
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         assert "Database version: 42" in result.stdout
         
         # Create unversioned database
@@ -361,22 +311,22 @@ def test_check_db_version_option():
         conn.close()
         
         # Test with unversioned database
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_check_version",            
             "--db", unversioned_db,
-            "--check_db_version"
-        ])
+        ], capture_output=True, text=True)
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         assert "unversioned" in result.stdout.lower()
         
         # Test with non-existent database
         nonexistent_db = temp_dir_path / "nonexistent.db"
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_check_version",            
             "--db", nonexistent_db,
-            "--check_db_version"
-        ])
+        ], capture_output=True, text=True)
         
-        assert result.exit_code == 1
+        assert result.returncode == 1
         assert "does not exist" in result.stdout
 
 
@@ -394,12 +344,13 @@ def test_cli_with_testsuite_a():
         _ensure_meta_table(db_path)
         
         # Run the CLI with explicit paths to the test suite
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--db", db_path,
             "--migrations", CLI_MIGRATIONS_DIR / "migrations"
-        ])
+        ], capture_output=True, text=True)
         
-        assert result.exit_code == 0
+        assert result.returncode == 0
         
         # Verify migrations applied
         conn = sqlite3.connect(db_path)

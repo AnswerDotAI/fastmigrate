@@ -2,18 +2,16 @@
 
 import sqlite3
 import tempfile
+import subprocess
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
 
-from fastmigrate.cli import app
 from fastmigrate.core import run_migrations, _ensure_meta_table
 
 
 # Path to the migrations directory
 FAILURES_DIR = Path(__file__).parent / "test_failures"
-runner = CliRunner()
 
 
 def test_sql_failure():
@@ -68,13 +66,14 @@ def test_cli_sql_failure():
         _ensure_meta_table(db_path)
         
         # Run the CLI with path to the failure test suite
-        result = runner.invoke(app, [
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
             "--db", db_path,
             "--migrations", FAILURES_DIR / "migrations"
-        ])
+        ], capture_output=True, text=True)
         
         # CLI should exit with non-zero code
-        assert result.exit_code != 0
+        assert result.returncode != 0
         
         # Check that only one migration was applied
         conn = sqlite3.connect(db_path)
@@ -211,13 +210,14 @@ def test_testsuite_failure_cli():
                 (migrations_dir / migration["file"]).chmod(0o755)
             
             # Run the CLI
-            result = runner.invoke(app, [
+            result = subprocess.run([
+                "fastmigrate_run_migrations",
                 "--db", db_path,
                 "--migrations", migrations_dir
-            ])
+            ], capture_output=True, text=True)
             
             # CLI should exit with non-zero code
-            assert result.exit_code != 0, f"Expected failure for {migration['file']}"
+            assert result.returncode != 0, f"Expected failure for {migration['file']}"
             
             # Check that the database was created but only one migration applied
             assert db_path.exists()

@@ -87,27 +87,27 @@ Here are some commands:
 
 1. **Create Database**:
    ```
-   fastmigrate --create_db --db /path/to/data.db
+   fastmigrate_create_db --db /path/to/data.db
    ```
    If no database is there, creates an empty database with version=0, If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an error code. This is equivalent to calling `fastmigrate.create_db()`
 
 2. **Check a db**
    ```
-   fastmigrate --check_db_version --db /path/to/data.db
+   fastmigrate_check_version --db /path/to/data.db
    ```
-   This will report the version of the db.
+   This will report the version of both fastmigrate and the db.
+
+3. **Backup a db**:
+   ```
+   fastmigrate_backup_db --db /path/to/data.db
+   ```
+   Backup the database with a timestamped filename ending with a .backup extention. This is equivalent to calling `fastmigrate.backup_db()`
    
-3. **Run migrations**:
+4. **Run migrations**:
    ```
-   fastmigrate --migrations /path/to/migrations/ --db /path/to/data.db
+   fastmigrate_run_migrations --db path/to/data.db
    ```
    Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
-
-4. **Backup and run migrations**:
-   ```
-   fastmigrate --backup --migrations /path/to/migrations/ --db /path/to/data.db
-   ```
-   Backup and then run all needed migrations on the db, as above.
 
 
 ### How to enroll an existing, unversioned database into fastmigrate

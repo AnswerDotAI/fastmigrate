@@ -10,17 +10,25 @@ If your app is using fastmigrate, then two things should already be in your code
 
 First, there will be a migrations directory, which contains migration scripts numbered like `0001-initialize.sql`, `0002-next-thing.py`, `0003-another-thing.sql`, and so on, all the way up to `0010-latest-thing.sql` (for instance).
 
-Second, your app will have initialization code which looks a bit like this:
+Second, your app will either have initialization code which looks a bit like this:
 
 ```python
 from fastmigrate.core import create_db, run_migrations
-db_path = "path/to/database.db"
-migrations_dir = "path/to/migrations/directory/"
+db_path = "path/to/data.db"
+migrations_dir = "path/to/migrations/"
 current_version = create_db(db_path)
 success = run_migrations(db_path, migrations_dir, verbose=False)
 if not success:
     # Handle migration failure
     print("Database migration failed!")
+```
+
+Or you are relying on the fastmigrate command line tool to do this for you, in which case you will have a command like this in your deployment script:
+
+```bash
+fastmigrate_create_db --db /path/to/data.db
+fastmigrate_backup_db --db /path/to/data.db
+fastmigrate_run_migrations --migrations /path/to/migrations/ --db /path/to/data.db
 ```
 
 To recap, what is going on here is that the highest-numbered migration script (`0010-latest-thing.sql` in this example), defines the *guaranteed version of your database*. The initialization code is what *enforces that guarantee*. After the initialization code has run successfully, the rest of your app can and should assume that your database is at version 10.
@@ -43,7 +51,7 @@ Those two changes you made -- adding a new migration script, and updating your a
 
 Of course, test your application locally before pushing or deploying.
 
-How? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run `fastmigrate --migrations /path/to/migrations --db /path/to/data.db`, with `data.db` at version 10 and an 0011 script in `migrations/`, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.
+How? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run `fastmigrate_run_migrations /path/to/migrations --db /path/to/data.db`, with `data.db` at version 10 and an 0011 script in `migrations/`, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.
 
 The fundamental rule to keep in mind with migrations is that you only ever add an additional migration. You never go back and change old ones. You could say the collection of migrations is _append only_. This is what makes them reliable, because it is what guarantees that they are always working from a known state. But it is also what can make the workflow for adding a new migration unfamiliar, since you need to think in terms of the _diffs_ to the database, even while your application code is usually thinking in terms of the database's instantaneous _state_.
 

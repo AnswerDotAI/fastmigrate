@@ -10,8 +10,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "typer>=0.9.0",
     "apswutils>=0.0.2",
+    "rich>=14.0.0",
 ]
 
 [dependency-groups]
@@ -22,7 +22,10 @@ dev = [
 ]
 
 [project.scripts]
-fastmigrate = "fastmigrate.cli:main_wrapper"
+fastmigrate_backup_db = "fastmigrate.cli:backup_db"
+fastmigrate_check_version = "fastmigrate.cli:check_version"
+fastmigrate_create_db = "fastmigrate.cli:create_db"
+fastmigrate_run_migrations = "fastmigrate.cli:run_migrations"
 
 [tool.pytest]
 testpaths = ["tests"]
@@ -30,7 +33,7 @@ testpaths = ["tests"]
 # No linting/formatting tools specified
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

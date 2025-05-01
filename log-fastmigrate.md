@@ -51,5 +51,8 @@ Does sqlite have primitives which can enforce that invariant automatically and r
 - [x]  add dry-run mode
 - [x]  add better logging
 
+## Improvements to consider after 6d0c48e
 
+For the CLI we moved from a single function approach with a lot of parameters setting behaviors to a multi-function approach where each function represents a behavior. This makes the code more readable and easier to maintain, and ensures that if a behavior fails that another behavior is never run by accident.
 
+We also moved from using Typer to a call_parse-based approach. This brings us into alignment with the rest of Answer.ai.
