@@ -6,6 +6,7 @@ from pathlib import Path
 import sqlite3
 from fastcore.script import call_parse # type:ignore
 import configparser
+from importlib.metadata import version
 
 from fastmigrate import core
 
@@ -13,18 +14,6 @@ from fastmigrate import core
 DEFAULT_DB = Path("data/database.db")
 DEFAULT_MIGRATIONS = Path("migrations")
 DEFAULT_CONFIG = Path(".fastmigrate")
-
-# Get the version number
-try:
-    from importlib.metadata import version as get_version
-    VERSION = get_version("fastmigrate")
-except ImportError:
-    # Fallback for Python < 3.8
-    try:
-        import pkg_resources
-        VERSION = pkg_resources.get_distribution("fastmigrate").version
-    except:
-        VERSION = "unknown"
 
 def _get_config(
         config_path: Path,     # config file, which may not exist
@@ -89,7 +78,7 @@ def check_version(
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
-    print(f"FastMigrate version: {VERSION}")    
+    print(f"FastMigrate version: {version('fastmigrate')}")    
     db_path, _ = _get_config(config_path, db)
     if not db_path.exists():
         print(f"Database file does not exist: {db_path}")
