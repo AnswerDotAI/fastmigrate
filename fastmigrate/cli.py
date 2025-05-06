@@ -9,6 +9,10 @@ import configparser
 from importlib.metadata import version
 
 from fastmigrate import core
+from rich.console import Console
+
+# Initialize Rich console
+console = Console()
 
 # Define constants - single source of truth for default values
 DEFAULT_DB = Path("data/database.db")
@@ -131,18 +135,52 @@ def create_db(
 
 @call_parse
 def enroll_db(
-    db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file
+    db:Path=DEFAULT_DB, # Path to the SQLite database file
+    migrations:Path=DEFAULT_MIGRATIONS, # migrations dir, which may not exist
+    config_path:Path=DEFAULT_CONFIG, # Path to config file
+    force:bool=False # Force enrollment even if no migrations are available
 ) -> None:
     """Convert an unversioned SQLite database to a versioned one.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.    
     """
-    db_path, migrations_path = _get_config(config_path, db)
-    success = core.enroll_db(db_path)
-    if not success:
+    db_path, migrations_path = _get_config(config_path, db, migrations)
+    if not db_path.exists():
+        raise FileNotFoundError(f"Database file does not exist: {db_path}")    
+
+    initial_migration_path = migrations_path / "0001_initial.sql"    
+    if not force and not migrations_path.exists():
+        console.print(f"[red bold]No migrations directory or initial migration exists.[/red bold]")
+        while True:
+            answer = input(f"Want fastmigrate to generate the initial migration? [Y/n] ").strip().lower()
+            if answer.lower() in ('y', 'yes', ''):
+                migrations_path.mkdir(parents=True, exist_ok=True)
+                console.print(f"Created directory: {migrations_path}")
+                schema = core.get_db_schema(db_path) 
+                initial_migration_path.write_text(schema)
+                print(f"Created initial migration at '{initial_migration_path}'")
+                break
+            elif answer.lower() in ('n', 'no'):
+                answer2 = input(f"We [bold]strongly[/bold] recommend creating a migrations directory.\nWant to continue anyway? [N/y] ").strip().lower()
+                if answer2.lower() in ('n', 'no', ''):
+                    sys.exit(1)
+                elif answer2.lower() in ('y', 'yes'):
+                    console.print("[red]Continuing without a migrations directory or initial migration.[/red]")
+                    break
+            else:
+                console.print("Invalid input. Please enter 'y' or 'n'.") 
+
+    try:
+        success = core.enroll_db(db_path)
+    except core.MetaTableExists:
+        console.print(f"[red]Database at {db_path} is already versioned.[/red]")
         sys.exit(1)
+    if not success:
+        console.print(f"[red]Failed to enroll the database at {db_path}.[/red]")
+        sys.exit(1)
+    console.print(f"[bold]Database at {db_path} is now versioned.[/bold]")
+
 
 
 @call_parse
@@ -161,3 +199,19 @@ def run_migrations(
     if not success:
         sys.exit(1)
 
+
+@call_parse
+def get_db_schema(
+    db: Path = DEFAULT_DB, # Path to the SQLite database file
+    config_path: Path = DEFAULT_CONFIG # Path to config file
+) -> None:
+    """Get the schema of the SQLite database.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.    
+    """
+    db_path, migrations_path = _get_config(config_path, db)
+    schema = core.get_db_schema(db_path)
+    print(schema)
+    # if not success:
+    #     sys.exit(1)

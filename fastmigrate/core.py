@@ -9,14 +9,15 @@ import time
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from rich.console import Console
 
 # Initialize Rich console
 console = Console()
 
-__all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
+__all__ = ["run_migrations", "create_db", "get_db_version",
+            "create_db_backup", "get_db_schema", "enroll_db", "MetaTableExists"
            # deprecated
            "ensure_versioned_db",
            "create_database_backup"]
@@ -54,7 +55,9 @@ def _ensure_meta_table(db_path:Path) -> None:
     warnings.warn("_ensure_meta_table is deprecated, as it has been renamed to enroll_db, which is identical except adding a boolean return value",
                  DeprecationWarning,
                   stacklevel=2)
-    return enroll_db(db_path)    
+    return enroll_db(db_path) 
+
+class MetaTableExists(Exception): pass   
 
 def enroll_db(db_path: Path) -> bool:
     """Create the _meta table if it doesn't exist, with a single row constraint.
@@ -111,7 +114,7 @@ def enroll_db(db_path: Path) -> bool:
                 raise sqlite3.Error(f"Failed to create _meta table: {e}")
             return True
         else:
-            return False
+            raise MetaTableExists("_meta table already exists")
     except sqlite3.Error as e:
         raise sqlite3.Error(f"Failed to access database: {e}")
     finally:
@@ -369,6 +372,52 @@ def create_database_backup(db_path:Path) -> Path | None:
                  DeprecationWarning,
                   stacklevel=2)
     return create_db_backup(db_path)
+
+
+def get_db_schema(db_path: Path) -> str:
+    """Get the SQL schema of a SQLite database file.
+    
+    This function retrieves the CREATE statements for all tables, 
+    indices, triggers, and views in the database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        str: The SQL schema as a string
+        
+    Raises:
+        FileNotFoundError: If database file doesn't exist
+        sqlite3.Error: If unable to access the database
+    """
+    db_path = Path(db_path)
+    # First check if the file exists
+    if not db_path.exists():
+        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        sqls = []
+        # Get schema information for all objects
+        for row in conn.execute(
+            "select sql from sqlite_master where sql is not null"
+        ).fetchall():
+            sql = row[0]
+            if 'sqlite_stat1' in sql: continue
+            if 'sqlite_stat4' in sql: continue
+            if 'CREATE TABLE' in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+            if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")
+            if not sql.strip().endswith(";"):
+                sql += ";"
+            sqls.append(sql)
+        return "\n".join(sqls)
+        
+    except sqlite3.Error as e:
+        raise sqlite3.Error(f"Failed to retrieve database schema: {e}")
+    finally:
+        if conn:
+            conn.close()
 
 
 def execute_migration_script(db_path: Path, script_path: Path) -> bool:

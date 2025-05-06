@@ -113,7 +113,11 @@ Here are some commands:
    ```
    fastmigrate_enroll_db --db path/to/data.db
    ```
-   This will create a new versioned database at the path, and copy the contents of the existing database into it. This is equivalent to calling `fastmigrate.enroll_db()`
+   This will create a new versioned database at the path, and copy the contents of the existing database into it. This is equivalent to calling `fastmigrate.enroll_db()`.
+
+   This command will offer to create an initial migration script for you, based on the current schema of the database. 
+
+
 
 
 ### How to enroll an existing, unversioned database into fastmigrate
