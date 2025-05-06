@@ -49,7 +49,7 @@ def ensure_versioned_db(db_path:Path) -> int:
                   stacklevel=2)
     return create_db(db_path)
 
-def _ensure_meta_table(db_path: Path) -> None:
+def _ensure_meta_table(db_path: Path):
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
@@ -62,6 +62,9 @@ def _ensure_meta_table(db_path: Path) -> None:
     
     Args:
         db_path: Path to the SQLite database
+
+    Returns:
+        None
         
     Raises:
         FileNotFoundError: If database file doesn't exist
@@ -106,6 +109,62 @@ def _ensure_meta_table(db_path: Path) -> None:
         if conn:
             conn.close()
 
+def enroll_db(db_path: Path) -> bool:
+    """Create the _meta table if it doesn't exist, with a single row constraint.
+    
+    Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
+    This ensures we can only have one row in the table.
+    
+    Args:
+        db_path: Path to the SQLite database
+
+    Returns:
+        bool: True if the table was created successfully, False otherwise
+        
+    Raises:
+        FileNotFoundError: If database file doesn't exist
+        sqlite3.Error: If unable to read or write to the database
+    """
+    db_path = Path(db_path)
+    # First check if the file exists
+    if not db_path.exists():
+        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    
+    conn = None
+    try:
+        conn = sqlite3.connect(db_path)
+        # Check if _meta table exists
+        cursor = conn.execute(
+            """
+            SELECT name, sql FROM sqlite_master 
+            WHERE type='table' AND name='_meta'
+            """
+        )
+        row = cursor.fetchone()
+        
+        if row is None:
+            # Table doesn't exist, create it with version 0
+            try:
+                with conn:
+                    conn.execute(
+                        """
+                        CREATE TABLE _meta (
+                            id INTEGER PRIMARY KEY CHECK (id = 1),
+                            version INTEGER NOT NULL DEFAULT 0
+                        )
+                        """
+                    )
+                    conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+            except sqlite3.Error as e:
+                raise sqlite3.Error(f"Failed to create _meta table: {e}")
+            return True
+        else:
+            return False
+    except sqlite3.Error as e:
+        raise sqlite3.Error(f"Failed to access database: {e}")
+    finally:
+        if conn:
+            conn.close()    
 
 def get_db_version(db_path: Path) -> int:
     """Get the current database version.

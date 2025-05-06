@@ -129,6 +129,23 @@ def create_db(
         sys.exit(1)
 
 @call_parse
+def enroll_db(
+    db: Path = DEFAULT_DB, # Path to the SQLite database file
+    config_path: Path = DEFAULT_CONFIG # Path to config file
+) -> None:
+    """Convert an unversioned SQLite database to a versioned one.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.    
+    """
+    db_path, migrations_path = _get_config(config_path, db)
+    success = core.enroll_db(db_path)
+    if not success:
+        sys.exit(1)
+
+
+
+@call_parse
 def run_migrations(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
