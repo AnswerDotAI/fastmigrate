@@ -37,7 +37,7 @@ def create_db(db_path:Path) -> int:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(db_path)
         conn.close()
-        enroll_db(db_path)
+        enroll_db(db_path, err_if_versioned=False)
         return 0
     else:
         return get_db_version(db_path)
@@ -55,15 +55,19 @@ def _ensure_meta_table(db_path:Path) -> None:
     warnings.warn("_ensure_meta_table is deprecated, as it has been renamed to enroll_db, which is identical except adding a boolean return value",
                  DeprecationWarning,
                   stacklevel=2)
-    return enroll_db(db_path) 
+    return enroll_db(db_path, err_if_versioned=False) 
 
 class MetaTableExists(Exception): pass   
 
-def enroll_db(db_path: Path) -> bool:
+def enroll_db(db_path: Path, err_if_versioned:bool=True) -> bool:
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
     This ensures we can only have one row in the table.
+
+    Depending on how this function is called, it may raise an error if the
+    table already exists or return 0. This allows different levels of verbosity
+    to be used in different contexts.
 
     WARNING: users should call this directly only if preparing a
     versioned db manually, for instance, for testing or for enrolling
@@ -72,6 +76,8 @@ def enroll_db(db_path: Path) -> bool:
     
     Args:
         db_path: Path to the SQLite database
+        err_if_versioned: If True, raises an error if the table already exists.
+                           If False, returns False if the table exists.
 
     Returns:
         bool: True if the table was created successfully, False otherwise
@@ -114,7 +120,8 @@ def enroll_db(db_path: Path) -> bool:
                 raise sqlite3.Error(f"Failed to create _meta table: {e}")
             return True
         else:
-            raise MetaTableExists("_meta table already exists")
+            if err_if_versioned: raise MetaTableExists("_meta table already exists")
+            else: return False
     except sqlite3.Error as e:
         raise sqlite3.Error(f"Failed to access database: {e}")
     finally:

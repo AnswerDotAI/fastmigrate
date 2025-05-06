@@ -280,7 +280,7 @@ def test_cli_enroll_db_success(tmp_path):
     # Run the enroll_db command
     result = subprocess.run([
         "fastmigrate_enroll_db",
-        "--db", db_path
+        "--db", db_path, '--force'
     ], capture_output=True, text=True)
     
     assert result.returncode == 0
@@ -320,7 +320,7 @@ def test_cli_enroll_db_already_versioned(tmp_path):
     # Run the enroll_db command on an already versioned database
     result = subprocess.run([
         "fastmigrate_enroll_db",
-        "--db", db_path
+        "--db", db_path, '--force'
     ], capture_output=True, text=True)
     
     # Should exit with non-zero status because the database is already versioned
@@ -343,7 +343,7 @@ def test_cli_enroll_db_nonexistent_db(tmp_path):
     # Run the enroll_db command on a non-existent database
     result = subprocess.run([
         "fastmigrate_enroll_db",
-        "--db", db_path
+        "--db", db_path, '--force'
     ], capture_output=True, text=True)
     
     # Should exit with non-zero status
@@ -386,7 +386,7 @@ def test_cli_enroll_db_with_config_file(tmp_path):
     # Run the enroll_db command with config
     result = subprocess.run([
         "fastmigrate_enroll_db",
-        "--config", config_path
+        "--config", config_path, '--force'
     ], capture_output=True, text=True)
     
     assert result.returncode == 0

@@ -64,7 +64,7 @@ def test_enroll_db_on_versioned_db(tmp_path):
     conn.close()
     
     # Try to enroll the already versioned database
-    result = enroll_db(db_path)
+    result = enroll_db(db_path, err_if_versioned=False)
     
     # Check result is False (table already existed)
     assert result is False
