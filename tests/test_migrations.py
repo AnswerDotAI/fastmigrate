@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from fastmigrate.core import run_migrations, _ensure_meta_table
+from fastmigrate.core import run_migrations, enroll_db
 
 
 def test_run_migrations_sql():
@@ -24,7 +24,7 @@ def test_run_migrations_sql():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
+        enroll_db(db_path)
         
         # Create SQL migration files
         with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
@@ -93,7 +93,7 @@ def test_run_migrations_python():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
+        enroll_db(db_path)
         
         # Create a base SQL migration
         with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
@@ -152,7 +152,7 @@ def test_run_migrations_failed():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
+        enroll_db(db_path)
         
         # Create a valid migration
         with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
@@ -193,7 +193,7 @@ def test_testsuite_a():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        enroll_db(str(db_path))
         
         # Run migrations
         assert run_migrations(str(db_path), str(migrations_dir)) is True

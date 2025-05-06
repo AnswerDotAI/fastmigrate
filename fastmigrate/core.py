@@ -36,7 +36,7 @@ def create_db(db_path:Path) -> int:
         db_path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(db_path)
         conn.close()
-        _ensure_meta_table(db_path)
+        enroll_db(db_path)
         return 0
     else:
         return get_db_version(db_path)
@@ -49,7 +49,14 @@ def ensure_versioned_db(db_path:Path) -> int:
                   stacklevel=2)
     return create_db(db_path)
 
-def _ensure_meta_table(db_path: Path):
+def _ensure_meta_table(db_path:Path) -> None:
+    "See enroll_db"
+    warnings.warn("_ensure_meta_table is deprecated, as it has been renamed to enroll_db, which is identical except adding a boolean return value",
+                 DeprecationWarning,
+                  stacklevel=2)
+    return enroll_db(db_path)    
+
+def enroll_db(db_path: Path) -> bool:
     """Create the _meta table if it doesn't exist, with a single row constraint.
     
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
@@ -58,62 +65,7 @@ def _ensure_meta_table(db_path: Path):
     WARNING: users should call this directly only if preparing a
     versioned db manually, for instance, for testing or for enrolling
     a non-version db after verifying its values and schema are what
-    would be produced by migration scripts.
-    
-    Args:
-        db_path: Path to the SQLite database
-
-    Returns:
-        None
-        
-    Raises:
-        FileNotFoundError: If database file doesn't exist
-        sqlite3.Error: If unable to read or write to the database
-
-    """
-    db_path = Path(db_path)
-    # First check if the file exists
-    if not db_path.exists():
-        raise FileNotFoundError(f"Database file does not exist: {db_path}")
-    
-    conn = None
-    try:
-        conn = sqlite3.connect(db_path)
-        # Check if _meta table exists
-        cursor = conn.execute(
-            """
-            SELECT name, sql FROM sqlite_master 
-            WHERE type='table' AND name='_meta'
-            """
-        )
-        row = cursor.fetchone()
-        
-        if row is None:
-            # Table doesn't exist, create it with version 0
-            try:
-                with conn:
-                    conn.execute(
-                        """
-                        CREATE TABLE _meta (
-                            id INTEGER PRIMARY KEY CHECK (id = 1),
-                            version INTEGER NOT NULL DEFAULT 0
-                        )
-                        """
-                    )
-                    conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
-            except sqlite3.Error as e:
-                raise sqlite3.Error(f"Failed to create _meta table: {e}")
-    except sqlite3.Error as e:
-        raise sqlite3.Error(f"Failed to access database: {e}")
-    finally:
-        if conn:
-            conn.close()
-
-def enroll_db(db_path: Path) -> bool:
-    """Create the _meta table if it doesn't exist, with a single row constraint.
-    
-    Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
-    This ensures we can only have one row in the table.
+    would be produced by migration scripts.    
     
     Args:
         db_path: Path to the SQLite database

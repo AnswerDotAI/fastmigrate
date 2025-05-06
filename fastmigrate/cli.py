@@ -128,6 +128,7 @@ def create_db(
         print(f"Unexpected error: {e}")
         sys.exit(1)
 
+
 @call_parse
 def enroll_db(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
@@ -142,7 +143,6 @@ def enroll_db(
     success = core.enroll_db(db_path)
     if not success:
         sys.exit(1)
-
 
 
 @call_parse

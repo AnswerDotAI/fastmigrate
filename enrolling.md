@@ -23,8 +23,8 @@ But if you are enrolling an existing db into fastmigrate, then you need to do th
 - Second, manually modify your current data to add fastmigrate version tag and set its version to 1. You can do this by using fastmigrate's internal API. Doing this constitutes asserting that the db is in fact in the state which would be produced by the migration script 0001. After doing this, fastmigrate will recognize your db as managed. Here is how to do it:
 
 ```python
-from fastmigrate.core import _ensure_meta_table, _set_db_version
-_ensure_meta_table("path/to/data.db")
+from fastmigrate.core import enroll_db, _set_db_version
+enroll_db("path/to/data.db")
 _set_db_version("path/to/data.db",1)
 ```
 

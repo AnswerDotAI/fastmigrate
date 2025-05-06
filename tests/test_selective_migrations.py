@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from fastmigrate.core import run_migrations, _ensure_meta_table
+from fastmigrate.core import run_migrations, enroll_db
 
 
 # Path to the selective migrations directory
@@ -29,7 +29,7 @@ def test_selective_migrations_core():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        enroll_db(str(db_path))
         
         # First run: should apply all migrations (0001 through 0010)
         assert run_migrations(str(db_path), str(migrations_dir)) is True
@@ -99,7 +99,7 @@ def test_selective_migrations_resume_after_failure():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        enroll_db(str(db_path))
         
         # Create initial migration
         with open(migrations_dir / "0001-initial.sql", "w") as f:
@@ -181,7 +181,7 @@ def test_selective_migrations_with_gaps():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        enroll_db(str(db_path))
         
         # Run migrations
         assert run_migrations(str(db_path), str(migrations_dir)) is True
@@ -210,7 +210,7 @@ def test_cli_selective_migrations():
         conn.close()
         
         # Initialize the database with _meta table
-        _ensure_meta_table(str(db_path))
+        enroll_db(str(db_path))
         
         # Create a temporary migrations directory with just one initial migration
         migrations_dir = Path(temp_dir) / "migrations"
