@@ -233,7 +233,6 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
                     f"{migration_scripts[version]} and {file_path}"
                 )
             migration_scripts[version] = file_path
-    
     return migration_scripts
 
 

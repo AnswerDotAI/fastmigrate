@@ -159,7 +159,7 @@ def enroll_db(
                 console.print(f"Created directory: {migrations_path}")
                 schema = core.get_db_schema(db_path) 
                 initial_migration_path.write_text(schema)
-                print(f"Created initial migration at '{initial_migration_path}'")
+                console.print(f"Created initial migration at '{initial_migration_path}'")
                 break
             elif answer.lower() in ('n', 'no'):
                 answer2 = input(f"We [bold]strongly[/bold] recommend creating a migrations directory.\nWant to continue anyway? [N/y] ").strip().lower()
@@ -197,6 +197,7 @@ def run_migrations(
     db_path, migrations_path = _get_config(config_path, db, migrations)
     success = core.run_migrations(db_path, migrations_path, verbose=True)    
     if not success:
+        console.print(f"Ran migrations from {migrations_path} to {db_path}")
         sys.exit(1)
 
 
