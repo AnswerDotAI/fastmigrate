@@ -13,7 +13,7 @@ pip install fastmigrate
 uv add fastmigrate
 ```
 
-To run all the tests, you also need to install the sqlite3 executable installed on your system.
+To run all the tests, you also need to install the sqlite3 executable on your system.
 
 ### How to use fastmigrate in your app
 
