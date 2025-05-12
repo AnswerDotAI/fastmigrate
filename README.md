@@ -4,7 +4,7 @@ The fastmigrate library helps with structured migration of data in SQLite. That 
 
 ### Installation
 
-fastmigrate is avalible to install from pypi.
+fastmigrate is available to install from pypi.
 
 ```bash
 pip install fastmigrate
@@ -13,7 +13,7 @@ pip install fastmigrate
 uv add fastmigrate
 ```
 
-If you create a .sql migration script, you need have the sqlite3 binary installed on your system.
+To run all the tests, you also need to install the sqlite3 executable installed on your system.
 
 ### How to use fastmigrate in your app
 
@@ -36,7 +36,7 @@ if not success:
     print("Database migration failed!")
 ```
 
-fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
+This will create a db if needed. Then, fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
 
 This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
 
@@ -68,14 +68,14 @@ Fastmigrate implements the standard database migration pattern, so these key con
 
 ### What fastmigrate guarantees
 
-The point of the system is that if you adopt it, fastmigrate offers the following guarantee:
+The point of the system is that if you adopt it, fastmigrate offers the following two guarantees:
 
-> [!NOTE]  
-> If you use fastmigrate to create the database and to run migration scripts, and if you define valid migration scripts, then fastmigrate will either produce a valid database, or else fail with an explicit error. It will never leave a database silently corrupted or marked with an inaccurate version.
+> [!NOTE]
+> Fastmigrate will never leave a database marked with an incorrect version without signalling an error, if *your* migration scripts reliably exit with an error code whenever they fail.
 > 
-> If in addition to the above, you _additionally_ define your migration scripts so they leave the db unmodified if they fail (which is easy with sql-based scripts), then fastmigrate can further guarantee that if a migration fails, the db will still be in a valid state.
+> Furthermore, fastmigrate will never leave a database corrupted, if *your* migration scripts always leave the db unmodified when they fail. (This is relatively easy with sql-based scripts, since they can use sql rollback).
 
-But to get this guarantee, you need fastmigrate to handle creating the db and running migrations (unless you [enrolling an existing db](./enrolling.md)).
+To get these guarantees, you only need to use fastmigrate's public commands and APIs to handle creating the db and running migrations (unless you are [enrolling an existing db](./enrolling.md)).
 
 One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
 
@@ -89,7 +89,7 @@ Here are some commands:
    ```
    fastmigrate_create_db --db /path/to/data.db
    ```
-   If no database is there, creates an empty database with version=0, If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an error code. This is equivalent to calling `fastmigrate.create_db()`
+   If no database is there, create an empty database with version=0. If a versioned db is there, do nothing. If an unversioned db or anything else is there, exit with an error code. This is equivalent to calling `fastmigrate.create_db()`
 
 2. **Check a db**
    ```
@@ -112,9 +112,9 @@ Here are some commands:
 
 ### How to enroll an existing, unversioned database into fastmigrate
 
-FastMigrate requires databases to be properly versioned before running migrations.
+FastMigrate needs to manage database versioning in order to run migrations.
 
-But if you already have a database which was created outside of fastmigrate, then you need to enroll it.
+So if you already have a database which was created outside of fastmigrate, then you need to enroll it.
 
 Please see the dedicated note on [enrolling an existing db](./enrolling.md).
 

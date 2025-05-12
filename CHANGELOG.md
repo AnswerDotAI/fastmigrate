@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.3.0
+
+### Enhancements
+
+- Update CLI interface to use separate executables, not subcommands.
+  (This is a breaking change in the CLI so I'm bumping the minor
+  version number, even though we're still under major version 0. The
+  API is not changed.)
+
 ## 0.2.5
 
 ### Bug fixes
