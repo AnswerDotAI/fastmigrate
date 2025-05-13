@@ -129,6 +129,28 @@ def create_db(
         sys.exit(1)
 
 @call_parse
+def enroll_db(
+    db: Path = DEFAULT_DB, # Path to the SQLite database file
+    migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
+    config_path: Path = DEFAULT_CONFIG # Path to config file
+) -> None:
+    """Enroll an existing SQLite database for versioning.
+
+    Note: command line arguments take precedence over values from a
+    config file, unless they are equal to default values.
+    """
+    db_path, migrations_path = _get_config(config_path, db, migrations)
+    if not migrations_path.exists(): migrations_path.mkdir(parents=True)
+    initial_migration = migrations_path / "0001-initial.sql"
+    schema = core.get_db_schema(db_path)    
+    initial_migration.write_text(schema)    
+    core._ensure_meta_table(db_path)
+    success = core.run_migrations(db_path, migrations_path, verbose=True)    
+    if not success:
+        sys.exit(1)
+
+
+@call_parse
 def run_migrations(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory

@@ -98,6 +98,7 @@ def _ensure_meta_table(db_path: Path) -> None:
                         """
                     )
                     conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+                    console.print(f"[green]Database is enrolled[/green]")
             except sqlite3.Error as e:
                 raise sqlite3.Error(f"Failed to create _meta table: {e}")
     except sqlite3.Error as e:
@@ -199,7 +200,6 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     """
     migrations_dir = Path(migrations_dir)
     migration_scripts: Dict[int, Path] = {}
-    
     if not migrations_dir.exists():
         return migration_scripts
     
@@ -212,7 +212,6 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
                     f"{migration_scripts[version]} and {file_path}"
                 )
             migration_scripts[version] = file_path
-    
     return migration_scripts
 
 
@@ -507,3 +506,41 @@ then setting your db's version explicitly with
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
         return False
+
+def get_db_schema(db_path: Path) -> str:
+    """Get the SQL schema of a SQLite database file.
+    
+    This function retrieves the CREATE statements for all tables, 
+    indices, triggers, and views in the database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        str: The SQL schema as a string
+        
+    Raises:
+        FileNotFoundError: If database file doesn't exist
+        sqlite3.Error: If unable to access the database
+    """
+    db_path = Path(db_path)
+    # First check if the file exists
+    if not db_path.exists(): raise FileNotFoundError(f"Database does not exist: {db_path}")
+
+    conn = None
+    try:
+        conn, sqls = sqlite3.connect(db_path), []
+        sqls = []
+        # Get schema information for all objects
+        for row in conn.execute("select sql from sqlite_master where sql is not null").fetchall():
+            sql = row[0]
+            if 'sqlite_stat1' in sql: continue
+            if 'sqlite_stat4' in sql: continue
+            if 'CREATE TABLE' in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+            if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")
+            if not sql.strip().endswith(";"): sql += ";"
+            sqls.append(sql)
+        return "\n".join(sqls)
+    except sqlite3.Error as e: raise sqlite3.Error(f"Failed to retrieve schema: {e}")
+    finally:
+        if conn: conn.close()
