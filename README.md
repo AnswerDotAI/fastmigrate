@@ -109,6 +109,11 @@ Here are some commands:
    ```
    Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
 
+5. **Enroll an existing db**:
+   ```
+   fastmigrate_enroll_db --db path/to/data.db
+   ```
+   This will generate an initial migration of the specified data called `0001-initial.sql`, then enroll the database into fastmigrate's versioning system, and will finally set the version to 1. 
 
 ### How to enroll an existing, unversioned database into fastmigrate
 

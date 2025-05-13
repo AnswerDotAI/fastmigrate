@@ -134,7 +134,7 @@ def enroll_db(
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
     config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
-    """Enroll an existing SQLite database for versioning.
+    """Enroll an existing SQLite database for versioning, adding a default initial migration.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
