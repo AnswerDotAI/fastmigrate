@@ -10,6 +10,9 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+from io import StringIO
+from apsw import Connection
+from apsw.shell import Shell
 
 from rich.console import Console
 
@@ -523,24 +526,13 @@ def get_db_schema(db_path: Path) -> str:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to access the database
     """
-    db_path = Path(db_path)
-    # First check if the file exists
-    if not db_path.exists(): raise FileNotFoundError(f"Database does not exist: {db_path}")
 
-    conn = None
-    try:
-        conn, sqls = sqlite3.connect(db_path), []
-        sqls = []
-        # Get schema information for all objects
-        for row in conn.execute("select sql from sqlite_master where sql is not null").fetchall():
-            sql = row[0]
-            if 'sqlite_stat1' in sql: continue
-            if 'sqlite_stat4' in sql: continue
-            if 'CREATE TABLE' in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
-            if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")
-            if not sql.strip().endswith(";"): sql += ";"
-            sqls.append(sql)
-        return "\n".join(sqls)
-    except sqlite3.Error as e: raise sqlite3.Error(f"Failed to retrieve schema: {e}")
-    finally:
-        if conn: conn.close()
+    if not Path(db_path).exists(): raise FileNotFoundError(f"Database does not exist: {db_path}")
+    conn = Connection(str(db_path))
+    out = StringIO()
+    shell = Shell(stdout=out, db=conn)
+    shell.process_command('.schema')
+    sql = out.getvalue()
+    if 'CREATE TABLE' in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+    if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")    
+    return sql
