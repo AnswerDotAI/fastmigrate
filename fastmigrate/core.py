@@ -10,6 +10,9 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
+from io import StringIO
+from apsw import Connection
+from apsw.shell import Shell
 
 from rich.console import Console
 
@@ -98,6 +101,7 @@ def _ensure_meta_table(db_path: Path) -> None:
                         """
                     )
                     conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
+                    console.print('Database is enrolled')
             except sqlite3.Error as e:
                 raise sqlite3.Error(f"Failed to create _meta table: {e}")
     except sqlite3.Error as e:
@@ -199,7 +203,6 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     """
     migrations_dir = Path(migrations_dir)
     migration_scripts: Dict[int, Path] = {}
-    
     if not migrations_dir.exists():
         return migration_scripts
     
@@ -212,7 +215,6 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
                     f"{migration_scripts[version]} and {file_path}"
                 )
             migration_scripts[version] = file_path
-    
     return migration_scripts
 
 
@@ -507,3 +509,30 @@ then setting your db's version explicitly with
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {e}")
         return False
+
+def get_db_schema(db_path: Path) -> str:
+    """Get the SQL schema of a SQLite database file.
+    
+    This function retrieves the CREATE statements for all tables, 
+    indices, triggers, and views in the database.
+    
+    Args:
+        db_path: Path to the SQLite database file
+        
+    Returns:
+        str: The SQL schema as a string
+        
+    Raises:
+        FileNotFoundError: If database file doesn't exist
+        sqlite3.Error: If unable to access the database
+    """
+
+    if not Path(db_path).exists(): raise FileNotFoundError(f"Database does not exist: {db_path}")
+    conn = Connection(str(db_path))
+    out = StringIO()
+    shell = Shell(stdout=out, db=conn)
+    shell.process_command('.schema')
+    sql = out.getvalue()
+    if 'CREATE TABLE' in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+    if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")    
+    return sql
