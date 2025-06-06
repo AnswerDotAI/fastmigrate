@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://AnswerDotAI.github.io/fastmigrate/index.html</loc>
-    <lastmod>2025-02-25T19:41:22.167Z</lastmod>
+    <loc>https://AnswerDotAI.github.io/fastmigrate/enrolling.html</loc>
+    <lastmod>2025-06-06T21:58:18.379Z</lastmod>
   </url>
   <url>
-    <loc>https://AnswerDotAI.github.io/fastmigrate/core.html</loc>
-    <lastmod>2025-02-25T19:41:22.166Z</lastmod>
+    <loc>https://AnswerDotAI.github.io/fastmigrate/adding_migrations.html</loc>
+    <lastmod>2025-06-06T21:58:09.346Z</lastmod>
+  </url>
+  <url>
+    <loc>https://AnswerDotAI.github.io/fastmigrate/index.html</loc>
+    <lastmod>2025-06-06T21:57:37.345Z</lastmod>
   </url>
 </urlset>
