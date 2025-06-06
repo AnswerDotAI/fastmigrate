@@ -1,8 +1,8 @@
-## fastmigrate
+# fastmigrate
 
 The fastmigrate library helps with structured migration of data in SQLite. That is, it gives you a way to specify and run a sequence of updates to your database schema, while preserving user data.
 
-### Installation
+## Installation
 
 fastmigrate is available to install from pypi.
 
@@ -15,7 +15,7 @@ uv add fastmigrate
 
 To run all the tests, you also need to install the sqlite3 executable on your system.
 
-### How to use fastmigrate in your app
+## How to use fastmigrate in your app
 
 Once you have added a `migrations/` directory to your app, you would typically use fastmigrate in your application code like so:
 
@@ -42,7 +42,7 @@ This will guarantee that all subsequent code will encounter a database at the sc
 
 If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding migrations](./adding_migrations.qmd)
 
-### Key concepts:
+## Key concepts:
 
 Fastmigrate implements the standard database migration pattern, so these key concepts may be familiar.
 
@@ -66,7 +66,7 @@ Fastmigrate implements the standard database migration pattern, so these key con
   - determining if there are any migration scripts with versions higher than the db version
   - trying to run those scripts
 
-### What fastmigrate guarantees
+## What fastmigrate guarantees
 
 The point of the system is that if you adopt it, fastmigrate offers the following two guarantees:
 
@@ -79,7 +79,7 @@ To get these guarantees, you only need to use fastmigrate's public commands and 
 
 One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
 
-### How to use fastmigrate from the command line
+## How to use fastmigrate from the command line
 
 When you run `fastmigrate`, it will look for migration scripts in `./migrations/` and a database at `./data/database.db`. These values can also be overridden by CLI arguments or by values set in the `.fastmigrate` configuration file, which is in ini format. But you can also provide them as with the command line arguments `--db` and `--migrations`.
 
@@ -110,7 +110,7 @@ Here are some commands:
    Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
 
 
-### How to enroll an existing, unversioned database into fastmigrate
+## How to enroll an existing, unversioned database into fastmigrate
 
 FastMigrate needs to manage database versioning in order to run migrations.
 
@@ -118,7 +118,7 @@ So if you already have a database which was created outside of fastmigrate, then
 
 Please see the dedicated note on [enrolling an existing db](./enrolling.qmd).
 
-### Miscellaneous Considerations
+## Miscellaneous Considerations
 
 1. **Unversioned Databases**: FastMigrate will refuse to run migrations on existing databases that don't have a _meta table with version information.
 
@@ -132,7 +132,7 @@ Please see the dedicated note on [enrolling an existing db](./enrolling.qmd).
 
 6. **Backups**: For safety, you can use the `--backup` option to create a backup before running migrations.
 
-### Contributing
+## Contributing
 
 To contribute to fastmigrate, create an editable install with the `dev` [dependency group](https://peps.python.org/pep-0735) using your favorite package manager.
 
