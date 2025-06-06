@@ -175,11 +175,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<section id="fastmigrate" class="level2">
-<h2 class="anchored" data-anchor-id="fastmigrate">fastmigrate</h2>
+<section id="fastmigrate" class="level1">
+<h1>fastmigrate</h1>
 <p>The fastmigrate library helps with structured migration of data in SQLite. That is, it gives you a way to specify and run a sequence of updates to your database schema, while preserving user data.</p>
-<section id="installation" class="level3">
-<h3 class="anchored" data-anchor-id="installation">Installation</h3>
+<section id="installation" class="level2">
+<h2 class="anchored" data-anchor-id="installation">Installation</h2>
 <p>fastmigrate is available to install from pypi.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install fastmigrate</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -187,8 +187,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> add fastmigrate</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>To run all the tests, you also need to install the sqlite3 executable on your system.</p>
 </section>
-<section id="how-to-use-fastmigrate-in-your-app" class="level3">
-<h3 class="anchored" data-anchor-id="how-to-use-fastmigrate-in-your-app">How to use fastmigrate in your app</h3>
+<section id="how-to-use-fastmigrate-in-your-app" class="level2">
+<h2 class="anchored" data-anchor-id="how-to-use-fastmigrate-in-your-app">How to use fastmigrate in your app</h2>
 <p>Once you have added a <code>migrations/</code> directory to your app, you would typically use fastmigrate in your application code like so:</p>
 <div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastmigrate.core <span class="im">import</span> create_db, run_migrations</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
@@ -208,8 +208,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.</p>
 <p>If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on <a href="./adding_migrations.html">safely adding migrations</a></p>
 </section>
-<section id="key-concepts" class="level3">
-<h3 class="anchored" data-anchor-id="key-concepts">Key concepts:</h3>
+<section id="key-concepts" class="level2">
+<h2 class="anchored" data-anchor-id="key-concepts">Key concepts:</h2>
 <p>Fastmigrate implements the standard database migration pattern, so these key concepts may be familiar.</p>
 <ul>
 <li><p>the <strong>version number</strong> of a database:</p>
@@ -237,8 +237,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul></li>
 </ul>
 </section>
-<section id="what-fastmigrate-guarantees" class="level3">
-<h3 class="anchored" data-anchor-id="what-fastmigrate-guarantees">What fastmigrate guarantees</h3>
+<section id="what-fastmigrate-guarantees" class="level2">
+<h2 class="anchored" data-anchor-id="what-fastmigrate-guarantees">What fastmigrate guarantees</h2>
 <p>The point of the system is that if you adopt it, fastmigrate offers the following two guarantees:</p>
 <blockquote class="blockquote">
 <p>[!NOTE] Fastmigrate will never leave a database marked with an incorrect version without signalling an error, if <em>your</em> migration scripts reliably exit with an error code whenever they fail.</p>
@@ -247,8 +247,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>To get these guarantees, you only need to use fastmigrate’s public commands and APIs to handle creating the db and running migrations (unless you are <a href="./enrolling.html">enrolling an existing db</a>).</p>
 <p>One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool.</p>
 </section>
-<section id="how-to-use-fastmigrate-from-the-command-line" class="level3">
-<h3 class="anchored" data-anchor-id="how-to-use-fastmigrate-from-the-command-line">How to use fastmigrate from the command line</h3>
+<section id="how-to-use-fastmigrate-from-the-command-line" class="level2">
+<h2 class="anchored" data-anchor-id="how-to-use-fastmigrate-from-the-command-line">How to use fastmigrate from the command line</h2>
 <p>When you run <code>fastmigrate</code>, it will look for migration scripts in <code>./migrations/</code> and a database at <code>./data/database.db</code>. These values can also be overridden by CLI arguments or by values set in the <code>.fastmigrate</code> configuration file, which is in ini format. But you can also provide them as with the command line arguments <code>--db</code> and <code>--migrations</code>.</p>
 <p>Here are some commands:</p>
 <ol type="1">
@@ -266,14 +266,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling <code>fastmigrate.run_migrations()</code></p></li>
 </ol>
 </section>
-<section id="how-to-enroll-an-existing-unversioned-database-into-fastmigrate" class="level3">
-<h3 class="anchored" data-anchor-id="how-to-enroll-an-existing-unversioned-database-into-fastmigrate">How to enroll an existing, unversioned database into fastmigrate</h3>
+<section id="how-to-enroll-an-existing-unversioned-database-into-fastmigrate" class="level2">
+<h2 class="anchored" data-anchor-id="how-to-enroll-an-existing-unversioned-database-into-fastmigrate">How to enroll an existing, unversioned database into fastmigrate</h2>
 <p>FastMigrate needs to manage database versioning in order to run migrations.</p>
 <p>So if you already have a database which was created outside of fastmigrate, then you need to enroll it.</p>
 <p>Please see the dedicated note on <a href="./enrolling.html">enrolling an existing db</a>.</p>
 </section>
-<section id="miscellaneous-considerations" class="level3">
-<h3 class="anchored" data-anchor-id="miscellaneous-considerations">Miscellaneous Considerations</h3>
+<section id="miscellaneous-considerations" class="level2">
+<h2 class="anchored" data-anchor-id="miscellaneous-considerations">Miscellaneous Considerations</h2>
 <ol type="1">
 <li><p><strong>Unversioned Databases</strong>: FastMigrate will refuse to run migrations on existing databases that don’t have a _meta table with version information.</p></li>
 <li><p><strong>Sequential Execution</strong>: Migrations are executed in order based on their index numbers. If migration #3 fails, migrations #1-2 remain applied and the process stops.</p></li>
@@ -283,8 +283,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p><strong>Backups</strong>: For safety, you can use the <code>--backup</code> option to create a backup before running migrations.</p></li>
 </ol>
 </section>
-<section id="contributing" class="level3">
-<h3 class="anchored" data-anchor-id="contributing">Contributing</h3>
+<section id="contributing" class="level2">
+<h2 class="anchored" data-anchor-id="contributing">Contributing</h2>
 <p>To contribute to fastmigrate, create an editable install with the <code>dev</code> <a href="https://peps.python.org/pep-0735">dependency group</a> using your favorite package manager.</p>
 <p>For example, with uv (preferred):</p>
 <div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> sync</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
