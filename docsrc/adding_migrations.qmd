@@ -1,4 +1,7 @@
-# How to add a new migration to your app
+---
+title: "Add a new migration"
+order: 1
+---
 
 So you need to modify your db schema? And you want to be very sure you are doing it correctly?
 

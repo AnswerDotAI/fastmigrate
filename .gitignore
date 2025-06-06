@@ -28,3 +28,7 @@ data/
 
 # OS files
 .DS_Store
+
+# Quarto
+_site/
+.quarto/

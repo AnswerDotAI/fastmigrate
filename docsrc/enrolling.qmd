@@ -1,4 +1,7 @@
-# Enrolling an existing db in fastmigrate
+---
+title: "Enrolling an existing db"
+order: 2
+---
 
 If you use fastmigrate with valid migration scripts, fastmigrate can guarantee the version of your database presented to your application code. This is the value of managed migrations.
 

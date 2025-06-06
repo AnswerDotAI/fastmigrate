@@ -1,0 +1,22 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "FastMigrate"
+  description: "Simple, fast database migrations for Python"
+  site-url: "https://AnswerDotAI.github.io/fastmigrate"
+  repo-url: "https://github.com/AnswerDotAI/fastmigrate"
+  repo-actions: [edit, issue]
+  
+  navbar:
+    right:
+      - icon: github
+        href: "https://github.com/AnswerDotAI/fastmigrate"
+
+  sidebar: 
+    contents: auto
+
+format:
+  html:
+    theme: cosmo
