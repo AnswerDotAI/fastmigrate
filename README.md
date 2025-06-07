@@ -20,19 +20,17 @@ To run all the tests, you also need to install the sqlite3 executable on your sy
 Once you have added a `migrations/` directory to your app, you would typically use fastmigrate in your application code like so:
 
 ```python
-from fastmigrate.core import create_db, run_migrations
+from fastmigrate import create_db, run_migrations
 
 # At application startup:
 db_path = "path/to/database.db"
 migrations_dir = "path/to/migrations"
 
-# Create/verify there is a versioned database, or else fail
+# Create/verify there is a versioned database
 current_version = create_db(db_path)
 
 # Apply any pending migrations
-success = run_migrations(db_path, migrations_dir, verbose=False)
-if not success:
-    # Handle migration failure
+if not run_migrations(db_path, migrations_dir, verbose=False):
     print("Database migration failed!")
 ```
 
@@ -48,9 +46,7 @@ Fastmigrate implements the standard database migration pattern, so these key con
 
 - the **version number** of a database:
   - this is an `int` value stored in a single-row table `_meta` in the field `version`. This is "db version", which is also the version of the last migration script which was run on that database.
-  
 - the **migrations directory** contains the migration scripts, which initialize the db to its initial version 1 and update it to the latest version as needed.
-
 - every valid **migration script** must:
   - conform to the "fastmigrate naming rule"
   - be one of the following:
@@ -58,9 +54,7 @@ Fastmigrate implements the standard database migration pattern, so these key con
      - a .sql file. In this case, fastmigrate will execute the SQL script against the database.
   - terminate with an exit code of 0, if and only if it succeeds
   - (ideally) leave the db unmodified, if it fails
-  
 - the **fastmigrate naming rule** is that every migration script match this naming pattern: `[index]-[description].[fileExtension]`, where `[index]` must be a string representing 4-digit integer. This naming convention defines the order in which scripts will run and the db version each migration script produces.
-
 - **attempting a migration** is:
   - determining the current version of a database
   - determining if there are any migration scripts with versions higher than the db version
@@ -121,15 +115,10 @@ Please see the dedicated note on [enrolling an existing db](./enrolling.qmd).
 ## Miscellaneous Considerations
 
 1. **Unversioned Databases**: FastMigrate will refuse to run migrations on existing databases that don't have a _meta table with version information.
-
 2. **Sequential Execution**: Migrations are executed in order based on their index numbers. If migration #3 fails, migrations #1-2 remain applied and the process stops.
-
 3. **Version Integrity**: The database version is only updated after a migration is successfully completed.
-
 4. **External Side Effects**: Python and Shell scripts may have side effects outside the database (file operations, network calls) that are not managed by fastmigrate.
-
 5. **Database Locking**: During migration, the database may be locked. Applications should not attempt to access it while migrations are running.
-
 6. **Backups**: For safety, you can use the `--backup` option to create a backup before running migrations.
 
 ## Contributing
@@ -148,4 +137,3 @@ or with pip 25.1:
 pip install -e . --group dev
 ```
 
-We currently don't check in the `uv.lock` file.
