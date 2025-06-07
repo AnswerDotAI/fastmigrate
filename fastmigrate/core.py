@@ -11,10 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Optional
 
-from rich.console import Console
-
-# Initialize Rich console
-console = Console()
 
 __all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
            # deprecated
@@ -242,14 +238,14 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
         
     except sqlite3.Error as e:
         # SQL error occurred
-        console.print(f"[bold red]Error[/bold red] executing SQL script {script_path}:")
-        console.print(f"  {e}", style="red")
+        sys.stderr.write(f"Error executing SQL script {script_path}:\n")
+        sys.stderr.write(f"  {e}\n")
         return False
     
     except Exception as e:
         # Handle other errors (file not found, etc.)
-        console.print(f"[bold red]Error[/bold red] executing SQL script {script_path}:")
-        console.print(f"  {e}", style="red")
+        sys.stderr.write(f"Error executing SQL script {script_path}:\n")
+        sys.stderr.write(f"  {e}\n")
         return False
         
     finally:
@@ -269,8 +265,9 @@ def execute_python_script(db_path: Path, script_path: Path) -> bool:
         )
         return True
     except subprocess.CalledProcessError as e:
-        console.print(f"[bold red]Error[/bold red] executing Python script {script_path}:")
-        console.print(e.stderr.decode(), style="red")
+        sys.stderr.write(f"Error executing Python script {script_path}:\n")
+        sys.stderr.write(e.stderr.decode())
+        sys.stderr.write('\n')
         return False
 
 
@@ -286,8 +283,9 @@ def execute_shell_script(db_path: Path, script_path: Path) -> bool:
         )
         return True
     except subprocess.CalledProcessError as e:
-        console.print(f"[bold red]Error[/bold red] executing shell script {script_path}:")
-        console.print(e.stderr.decode(), style="red")
+        sys.stderr.write(f"Error executing shell script {script_path}:\n")
+        sys.stderr.write(e.stderr.decode())
+        sys.stderr.write('\n')
         return False
 
 
@@ -306,7 +304,7 @@ def create_db_backup(db_path: Path) -> Path | None:
     db_path = Path(db_path)
     # Only proceed if the database exists
     if not db_path.exists():
-        console.print(f"[yellow]Warning:[/yellow] Database file does not exist: {db_path}")
+        print(f"Warning: Database file does not exist: {db_path}")
         return None
 
     # Create a timestamped backup filename
@@ -315,7 +313,7 @@ def create_db_backup(db_path: Path) -> Path | None:
 
     # Check if the backup file already exists
     if backup_path.exists():
-        console.print(f"[red]Error:[/red] Backup file already exists: {backup_path}")
+        sys.stderr.write(f"Error: Backup file already exists: {backup_path}\n")
         return None
 
     conn = None
@@ -332,17 +330,17 @@ def create_db_backup(db_path: Path) -> Path | None:
         if not backup_path.exists():
             raise Exception("Backup file was not created")
 
-        console.print(f"[green]Database backup created:[/green] {backup_path}")
+        print(f"Database backup created: {backup_path}")
         return backup_path
     except Exception as e:
-        console.print(f"[bold red]Error during backup:[/bold red] {e}")
+        print(f"Error during backup: {e}")
         # Attempt to remove potentially incomplete backup file
         if backup_path.exists():
             try:
                 backup_path.unlink() # remove the file
-                console.print(f"[yellow]Removed incomplete backup file:[/yellow] {backup_path}")
+                print(f"Removed incomplete backup file: {backup_path}")
             except OSError as remove_err:
-                console.print(f"[bold red]Error removing incomplete backup file:[/bold red] {remove_err}")
+                sys.stderr.write(f"Error removing incomplete backup file: {remove_err}\n")
         return None
     finally:
         # this runs before return `backup_path` or `return None` in the try block
@@ -373,7 +371,7 @@ def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     elif ext == ".sh":
         return execute_shell_script(db_path, script_path)
     else:
-        console.print(f"[bold red]Unsupported script type:[/bold red] {script_path}")
+        sys.stderr.write(f"Unsupported script type: {script_path}\n")
         return False
 
 
@@ -406,8 +404,8 @@ def run_migrations(
     
     # Check if database file exists
     if not db_path.exists():
-        console.print(f"[bold red]Error:[/bold red] Database file does not exist: {db_path}")
-        console.print("The database file must exist before running migrations.")
+        sys.stderr.write(f"Error: Database file does not exist: {db_path}\n")
+        sys.stderr.write("The database file must exist before running migrations.\n")
         return False
     
     try:
@@ -415,7 +413,7 @@ def run_migrations(
         try:
             create_db(db_path)
         except sqlite3.Error as e:
-            console.print(f"""[bold red]Error:[/bold red] Cannot migrate the db at {db_path}.
+            sys.stderr.write(f"""Error: Cannot migrate the db at {db_path}.
 
 This is because it is not managed by fastmigrate. Please do one of the following:
 
@@ -425,7 +423,7 @@ This is because it is not managed by fastmigrate. Please do one of the following
 2. Enroll your existing database, by manually verifying your existing
 db's data matches a version defined by your migration scripts, and
 then setting your db's version explicitly with
-`fastmigrate.core._set_db_version()`. See enrolling.md for guidance.""")
+`fastmigrate.core._set_db_version()`. See enrolling.md for guidance.\n""")
             return False
         
         # Get current version
@@ -435,7 +433,7 @@ then setting your db's version explicitly with
         try:
             migration_scripts = get_migration_scripts(migrations_dir)
         except ValueError as e:
-            console.print(f"[bold red]Error:[/bold red] {e}")
+            sys.stderr.write(f"Error: {e}\n")
             return False
         
         # Find pending migrations
@@ -447,7 +445,7 @@ then setting your db's version explicitly with
         
         if not pending_migrations:
             if verbose:
-                console.print(f"[green]Database is up to date[/green] (version {current_version})")
+                print(f"Database is up to date (version {current_version})")
             return True
         
         # Sort migrations by version
@@ -462,7 +460,7 @@ then setting your db's version explicitly with
             # Start timing this migration
             migration_start = time.time()
             if verbose:
-                console.print(f"[blue]Applying[/blue] migration [bold]{version}[/bold]: [cyan]{script_name}[/cyan]")
+                print(f"Applying migration {version}: {script_name}")
             
             # Each script will open its own connection
             
@@ -470,14 +468,14 @@ then setting your db's version explicitly with
             success = execute_migration_script(db_path, script_path)
             
             if not success:
-                console.print(f"[bold red]Migration failed:[/bold red] {script_path}")
+                sys.stderr.write(f"Migration failed: {script_path}\n")
                 stats["failed"] += 1
                 
                 # Show summary of failure - always show errors regardless of verbose flag
-                console.print("\n[bold red]Migration Failed[/bold red]")
-                console.print(f"  • [bold]{stats['applied']}[/bold] migrations applied")
-                console.print(f"  • [bold]{stats['failed']}[/bold] migrations failed")
-                console.print(f"  • Total time: [bold]{time.time() - start_time:.2f}[/bold] seconds")
+                sys.stderr.write("\nMigration Failed\n")
+                print(f"  • {stats['applied']} migrations applied")
+                print(f"  • {stats['failed']} migrations failed")
+                print(f"  • Total time: {time.time() - start_time:.2f} seconds")
                 
                 return False
             
@@ -489,21 +487,21 @@ then setting your db's version explicitly with
             # Update version
             _set_db_version(db_path, version)
             if verbose:
-                console.print(f"[green]✓[/green] Database updated to version [bold]{version}[/bold] [dim]({migration_duration:.2f}s)[/dim]")
+                print(f"✓ Database updated to version {version} ({migration_duration:.2f}s)")
         
         # Show summary of successful run
         if stats["applied"] > 0 and verbose:
             total_duration = time.time() - start_time
-            console.print("\n[bold green]Migration Complete[/bold green]")
-            console.print(f"  • [bold]{stats['applied']}[/bold] migrations applied")
-            console.print(f"  • Database now at version [bold]{sorted_versions[-1]}[/bold]")
-            console.print(f"  • Total time: [bold]{total_duration:.2f}[/bold] seconds")
+            print("\nMigration Complete")
+            print(f"  • {stats['applied']} migrations applied")
+            print(f"  • Database now at version {sorted_versions[-1]}")
+            print(f"  • Total time: {total_duration:.2f} seconds")
         
         return True
     
     except sqlite3.Error as e:
-        console.print(f"[bold red]Database error:[/bold red] {e}")
+        sys.stderr.write(f"Database error: {e}\n")
         return False
     except Exception as e:
-        console.print(f"[bold red]Error:[/bold red] {e}")
+        sys.stderr.write(f"Error: {e}\n")
         return False
