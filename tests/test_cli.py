@@ -328,7 +328,7 @@ def test_cli_enroll_db_already_versioned(tmp_path):
     ], capture_output=True, text=True)
     
     # Should exit with zero status because the database is successfully versioned
-    assert result.returncode == 0
+    assert result.returncode != 0
     
     # Verify the database version wasn't changed
     conn = sqlite3.connect(db_path)
@@ -516,3 +516,4 @@ def test_cli_with_testsuite_a(tmp_path):
         assert cursor.fetchone() is not None
     
     conn.close()
+

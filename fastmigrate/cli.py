@@ -134,20 +134,23 @@ def enroll_db(
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
     config_path: Path = DEFAULT_CONFIG # Path to config file
 ) -> None:
-    """Enroll an existing SQLite database for versioning, adding a default initial migration, then running it.
+    """Enroll an existing SQLite database for versioning, and generate a draft initial migration.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
     db_path, migrations_path = _get_config(config_path, db, migrations)
+    try:
+        db_version = core.get_db_version(db_path)
+        print(f"Cannot enroll, since this database is already managed.\nIt is marked as version {db_version}")
+        sys.exit(1)
+    except sqlite3.Error: pass
     if not migrations_path.exists(): migrations_path.mkdir(parents=True)
     initial_migration = migrations_path / "0001-initial.sql"
     schema = core.get_db_schema(db_path)    
     initial_migration.write_text(schema)    
     core._ensure_meta_table(db_path)
-    success = core.run_migrations(db_path, migrations_path, verbose=True)    
-    if not success:
-        sys.exit(1)
+    core._set_db_version(db_path,1)
 
 
 @call_parse
