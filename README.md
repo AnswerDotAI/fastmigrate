@@ -103,6 +103,11 @@ Here are some commands:
    ```
    Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
 
+5. **Enroll an existing db**:
+   ```
+   fastmigrate_enroll_db --db path/to/data.db
+   ```
+   Enroll an existing SQLite database for versioning, adding a default initial migration called `0001-initial.sql`, then running it. Running the initial migration will set the version to 1. This is equivalent to calling `fastmigrate.enroll_db()`
 
 ## How to enroll an existing, unversioned database into fastmigrate
 

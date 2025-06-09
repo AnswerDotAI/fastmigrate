@@ -24,6 +24,7 @@ dev = [
 fastmigrate_backup_db = "fastmigrate.cli:backup_db"
 fastmigrate_check_version = "fastmigrate.cli:check_version"
 fastmigrate_create_db = "fastmigrate.cli:create_db"
+fastmigrate_enroll_db = "fastmigrate.cli:enroll_db"
 fastmigrate_run_migrations = "fastmigrate.cli:run_migrations"
 
 [tool.pytest]
