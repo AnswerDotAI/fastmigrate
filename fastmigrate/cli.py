@@ -146,7 +146,7 @@ def enroll_db(
         sys.exit(1)
     except sqlite3.Error: pass
     if not migrations_path.exists(): migrations_path.mkdir(parents=True)
-    initial_migration = migrations_path / "0001-initial.sql"
+    initial_migration = migrations_path / "0001-initialize.sql"
     schema = core.get_db_schema(db_path)    
     initial_migration.write_text(schema)    
     core._ensure_meta_table(db_path)
