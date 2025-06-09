@@ -5,7 +5,6 @@ import re
 import sqlite3
 import subprocess
 import sys
-import time
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -398,8 +397,7 @@ def run_migrations(
     # Keep track of migration statistics
     stats = {
         "applied": 0,
-        "failed": 0,
-        "total_time": 0.0
+        "failed": 0
     }
     
     # Check if database file exists
@@ -452,13 +450,10 @@ then setting your db's version explicitly with
         sorted_versions = sorted(pending_migrations.keys())
             
         # Execute migrations
-        start_time = time.time()
         for version in sorted_versions:
             script_path = pending_migrations[version]
             script_name = script_path.name
             
-            # Start timing this migration
-            migration_start = time.time()
             if verbose:
                 print(f"Applying migration {version}: {script_name}")
             
@@ -475,27 +470,21 @@ then setting your db's version explicitly with
                 sys.stderr.write("\nMigration Failed\n")
                 print(f"  • {stats['applied']} migrations applied")
                 print(f"  • {stats['failed']} migrations failed")
-                print(f"  • Total time: {time.time() - start_time:.2f} seconds")
                 
                 return False
             
-            # Record migration duration
-            migration_duration = time.time() - migration_start
-            stats["total_time"] += migration_duration
             stats["applied"] += 1
             
             # Update version
             _set_db_version(db_path, version)
             if verbose:
-                print(f"✓ Database updated to version {version} ({migration_duration:.2f}s)")
+                print(f"✓ Database updated to version {version}")
         
         # Show summary of successful run
         if stats["applied"] > 0 and verbose:
-            total_duration = time.time() - start_time
             print("\nMigration Complete")
             print(f"  • {stats['applied']} migrations applied")
             print(f"  • Database now at version {sorted_versions[-1]}")
-            print(f"  • Total time: {total_duration:.2f} seconds")
         
         return True
     
