@@ -263,6 +263,7 @@ def test_cli_precedence():
 def test_cli_enroll_db_success(tmp_path):
     """Test the CLI enroll_db command successfully enrolls an unversioned database."""
     db_path = tmp_path / "unversioned.db"
+    migrations_path = tmp_path / "migrations"
     
     # Create an unversioned database with a sample table
     conn = sqlite3.connect(db_path)
@@ -281,6 +282,7 @@ def test_cli_enroll_db_success(tmp_path):
     result = subprocess.run([
         "fastmigrate_enroll_db",
         "--db", db_path,
+        "--migrations", migrations_path,
     ], capture_output=True, text=True)
     
     assert result.returncode == 0
@@ -304,6 +306,7 @@ def test_cli_enroll_db_success(tmp_path):
 def test_cli_enroll_db_already_versioned(tmp_path):
     """Test the CLI enroll_db command fails when the database is already versioned."""
     db_path = tmp_path / "versioned.db"
+    migrations_path = tmp_path / "migrations"
     
     # Create a versioned database
     conn = sqlite3.connect(db_path)
@@ -321,6 +324,7 @@ def test_cli_enroll_db_already_versioned(tmp_path):
     result = subprocess.run([
         "fastmigrate_enroll_db",
         "--db", db_path,
+        "--migrations", migrations_path,
     ], capture_output=True, text=True)
     
     # Should exit with zero status because the database is successfully versioned
@@ -336,6 +340,7 @@ def test_cli_enroll_db_already_versioned(tmp_path):
 def test_cli_enroll_db_nonexistent_db(tmp_path):
     """Test the CLI enroll_db command fails when the database doesn't exist."""
     db_path = tmp_path / "nonexistent.db"
+    migrations_path = tmp_path / "migrations"
     
     # Verify file doesn't exist
     assert not db_path.exists()
@@ -344,6 +349,7 @@ def test_cli_enroll_db_nonexistent_db(tmp_path):
     result = subprocess.run([
         "fastmigrate_enroll_db",
         "--db", db_path,
+        "--migrations", migrations_path,
     ], capture_output=True, text=True)
     
     # Should exit with non-zero status
@@ -354,6 +360,7 @@ def test_cli_enroll_db_nonexistent_db(tmp_path):
 def test_cli_enroll_db_invalid_db(tmp_path):
     """Test the CLI enroll_db command fails when the database is invalid."""
     db_path = tmp_path / "invalid.db"
+    migrations_path = tmp_path / "migrations"
     
     # Create an invalid database file
     with open(db_path, 'wb') as f:
@@ -362,7 +369,8 @@ def test_cli_enroll_db_invalid_db(tmp_path):
     # Run the enroll_db command on an invalid database
     result = subprocess.run([
         "fastmigrate_enroll_db",
-        "--db", db_path
+        "--db", db_path,
+        "--migrations", migrations_path
     ], capture_output=True, text=True)
     
     # Should exit with non-zero status
@@ -372,6 +380,7 @@ def test_cli_enroll_db_invalid_db(tmp_path):
 def test_cli_enroll_db_with_config_file(tmp_path):
     """Test the CLI enroll_db command with configuration from a file."""
     db_path = tmp_path / "db_from_config.db"
+    migrations_path = tmp_path / "migrations"
     config_path = tmp_path / "test_config.ini"
     
     # Create an unversioned database
@@ -381,7 +390,7 @@ def test_cli_enroll_db_with_config_file(tmp_path):
     conn.close()
     
     # Create a config file
-    config_path.write_text(f"[paths]\ndb = {db_path}")
+    config_path.write_text(f"[paths]\ndb = {db_path}\nmigrations = {migrations_path}")
     
     # Run the enroll_db command with config
     result = subprocess.run([
