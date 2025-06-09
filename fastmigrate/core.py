@@ -462,13 +462,11 @@ https://answerdotai.github.io/fastmigrate/enrolling.html""",file=stderr)
             success = execute_migration_script(db_path, script_path)
             
             if not success:
-                print(f"Migration failed: {script_path}", file=stderr)
-                stats["failed"] += 1
-                
                 # Show summary of failure - always show errors regardless of verbose flag
-                print("\nMigration Failed",file=stderr)
-                print(f"  • {stats['applied']} migrations applied")
-                print(f"  • {stats['failed']} migrations failed")
+                stats["failed"] += 1
+                print(f"""Migration failed: {script_path}
+  • {stats['applied']} migrations applied
+  • {stats['failed']} migrations failed""", file=stderr)
                 
                 return False
             
