@@ -5,6 +5,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+from sys import stderr
 import warnings
 from datetime import datetime
 from pathlib import Path
@@ -237,14 +238,14 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
         
     except sqlite3.Error as e:
         # SQL error occurred
-        sys.stderr.write(f"Error executing SQL script {script_path}:\n")
-        sys.stderr.write(f"  {e}\n")
+        print(f"Error executing SQL script {script_path}:", file=stderr)
+        print(f"  {e}", file=stderr)
         return False
     
     except Exception as e:
         # Handle other errors (file not found, etc.)
-        sys.stderr.write(f"Error executing SQL script {script_path}:\n")
-        sys.stderr.write(f"  {e}\n")
+        print(f"Error executing SQL script {script_path}:", file=stderr)
+        print(f"  {e}", file=stderr)
         return False
         
     finally:
@@ -264,9 +265,9 @@ def execute_python_script(db_path: Path, script_path: Path) -> bool:
         )
         return True
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f"Error executing Python script {script_path}:\n")
+        print(f"Error executing Python script {script_path}:", file=stderr)
         sys.stderr.write(e.stderr.decode())
-        sys.stderr.write('\n')
+        print("",file=stderr)
         return False
 
 
@@ -282,9 +283,9 @@ def execute_shell_script(db_path: Path, script_path: Path) -> bool:
         )
         return True
     except subprocess.CalledProcessError as e:
-        sys.stderr.write(f"Error executing shell script {script_path}:\n")
+        print(f"Error executing shell script {script_path}:", file=stderr)
         sys.stderr.write(e.stderr.decode())
-        sys.stderr.write('\n')
+        print("",file=stderr)
         return False
 
 
@@ -312,7 +313,7 @@ def create_db_backup(db_path: Path) -> Path | None:
 
     # Check if the backup file already exists
     if backup_path.exists():
-        sys.stderr.write(f"Error: Backup file already exists: {backup_path}\n")
+        print(f"Error: Backup file already exists: {backup_path}", file=stderr)
         return None
 
     conn = None
@@ -339,7 +340,7 @@ def create_db_backup(db_path: Path) -> Path | None:
                 backup_path.unlink() # remove the file
                 print(f"Removed incomplete backup file: {backup_path}")
             except OSError as remove_err:
-                sys.stderr.write(f"Error removing incomplete backup file: {remove_err}\n")
+                print(f"Error removing incomplete backup file: {remove_err}", file=stderr)
         return None
     finally:
         # this runs before return `backup_path` or `return None` in the try block
@@ -370,7 +371,7 @@ def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     elif ext == ".sh":
         return execute_shell_script(db_path, script_path)
     else:
-        sys.stderr.write(f"Unsupported script type: {script_path}\n")
+        print(f"Unsupported script type: {script_path}", file=stderr)
         return False
 
 
@@ -402,8 +403,8 @@ def run_migrations(
     
     # Check if database file exists
     if not db_path.exists():
-        sys.stderr.write(f"Error: Database file does not exist: {db_path}\n")
-        sys.stderr.write("The database file must exist before running migrations.\n")
+        print(f"Error: Database file does not exist: {db_path}", file=stderr)
+        print("The database file must exist before running migrations.",file=stderr)
         return False
     
     try:
@@ -411,7 +412,7 @@ def run_migrations(
         try:
             create_db(db_path)
         except sqlite3.Error as e:
-            sys.stderr.write(f"""Error: Cannot migrate the db at {db_path}.
+            print(f"""Error: Cannot migrate the db at {db_path}.
 
 This is because it is not managed by fastmigrate. Please do one of the following:
 
@@ -421,7 +422,7 @@ This is because it is not managed by fastmigrate. Please do one of the following
 2. Enroll your existing database, by manually verifying your existing
 db's data matches a version defined by your migration scripts, and
 then setting your db's version explicitly with
-`fastmigrate.core._set_db_version()`. See enrolling.md for guidance.\n""")
+`fastmigrate.core._set_db_version()`. See enrolling.md for guidance.""",file=stderr)
             return False
         
         # Get current version
@@ -431,7 +432,7 @@ then setting your db's version explicitly with
         try:
             migration_scripts = get_migration_scripts(migrations_dir)
         except ValueError as e:
-            sys.stderr.write(f"Error: {e}\n")
+            print(f"Error: {e}", file=stderr)
             return False
         
         # Find pending migrations
@@ -463,11 +464,11 @@ then setting your db's version explicitly with
             success = execute_migration_script(db_path, script_path)
             
             if not success:
-                sys.stderr.write(f"Migration failed: {script_path}\n")
+                print(f"Migration failed: {script_path}", file=stderr)
                 stats["failed"] += 1
                 
                 # Show summary of failure - always show errors regardless of verbose flag
-                sys.stderr.write("\nMigration Failed\n")
+                print("\nMigration Failed",file=stderr)
                 print(f"  • {stats['applied']} migrations applied")
                 print(f"  • {stats['failed']} migrations failed")
                 
@@ -489,8 +490,8 @@ then setting your db's version explicitly with
         return True
     
     except sqlite3.Error as e:
-        sys.stderr.write(f"Database error: {e}\n")
+        print(f"Database error: {e}", file=stderr)
         return False
     except Exception as e:
-        sys.stderr.write(f"Error: {e}\n")
+        print(f"Error: {e}", file=stderr)
         return False
