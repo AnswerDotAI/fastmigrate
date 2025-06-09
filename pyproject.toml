@@ -10,8 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "apswutils>=0.0.2",
-    "rich>=14.0.0",
+    "apswutils>=0.0.2"
 ]
 
 [dependency-groups]
