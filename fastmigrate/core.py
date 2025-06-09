@@ -101,7 +101,7 @@ def _ensure_meta_table(db_path: Path) -> None:
                         """
                     )
                     conn.execute("INSERT INTO _meta (id, version) VALUES (1, 0)")
-                    console.print('Database is enrolled')
+                    print('Database is enrolled')
             except sqlite3.Error as e:
                 raise sqlite3.Error(f"Failed to create _meta table: {e}")
     except sqlite3.Error as e:
