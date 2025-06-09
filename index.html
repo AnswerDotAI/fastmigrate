@@ -262,6 +262,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><p><strong>Run migrations</strong>:</p>
 <pre><code>fastmigrate_run_migrations --db path/to/data.db</code></pre>
 <p>Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling <code>fastmigrate.run_migrations()</code></p></li>
+<li><p><strong>Enroll an existing db</strong>:</p>
+<pre><code>fastmigrate_enroll_db --db path/to/data.db</code></pre>
+<p>Enroll an existing SQLite database for versioning, adding a default initial migration called <code>0001-initial.sql</code>, then running it. Running the initial migration will set the version to 1. This is equivalent to calling <code>fastmigrate.enroll_db()</code></p></li>
 </ol>
 </section>
 <section id="how-to-enroll-an-existing-unversioned-database-into-fastmigrate" class="level2">
@@ -285,9 +288,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="contributing">Contributing</h2>
 <p>To contribute to fastmigrate, create an editable install with the <code>dev</code> <a href="https://peps.python.org/pep-0735">dependency group</a> using your favorite package manager.</p>
 <p>For example, with uv (preferred):</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> sync</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> sync</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>or with pip 25.1:</p>
-<div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-e</span> . <span class="at">--group</span> dev</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-e</span> . <span class="at">--group</span> dev</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 
 
 </section>
