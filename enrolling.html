@@ -191,28 +191,47 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>If you use fastmigrate with valid migration scripts, fastmigrate can guarantee the version of your database presented to your application code. This is the value of managed migrations.</p>
-<p>However, to provide this guarantee, you need your database to be managed by fastmigrate. If you created the database with fastmigrate (using <code>create_db</code> or the <code>fastmigrate_create_db</code> CLI command), then it is managed.</p>
-<p>But what if you are starting with an application built outside of fastmigrate, and you want to <em>enroll</em> the database in fastmigrate? Here is how to think about it, and how to do it correctly:</p>
-<p>To clarify the background: the key invariant which we need to maintain is this: <em>any database which has a fastmigrate version number (like 1, or like 3) is exactly in the state which would be produced by the migration script with that version number (like by <code>0001-initialize.sql</code> or <code>0003-unify-users.sql</code>).</em></p>
-<p>Now if you create a db with fastmigrate, it is created with version 0, and the version only advances as a result of running migration scripts. So this maintains the invariant.</p>
-<p>But if you are enrolling an existing db into fastmigrate, then you need to do three things.</p>
-<ul>
-<li><p>First, write a migration script <code>0001-initialize.sql</code> which will produce the schema of the database which you are working with right now.</p>
-<p>Why? You need this so that, when you are starting fresh instances of your application, fastmigrate can create a database which is equivalent to what you have created now. The easiest way to create this script is to run <code>sqlite3 data.db .schema &gt; 0001-initialize.sql</code> on your current database, which will create a sql file <code>0001-initialize.sql</code> which creates a fresh db with the same schema as your current db.</p>
-<p>This is now your first migration script. Because it matches the current state of your current database, it will not be run on your current database. But it will ensure that newly created databases match your current database.</p>
-<p>From an abundance of caution, you should use it to create a db and confirm that it is indeed equivalent to your current db.</p></li>
-<li><p>Second, manually modify your current data to add fastmigrate version tag and set its version to 1. You can do this by using fastmigrate’s internal API. Doing this constitutes asserting that the db is in fact in the state which would be produced by the migration script 0001. After doing this, fastmigrate will recognize your db as managed. Here is how to do it:</p></li>
-</ul>
-<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastmigrate.core <span class="im">import</span> _ensure_meta_table, _set_db_version</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>_ensure_meta_table(<span class="st">"path/to/data.db"</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>_set_db_version(<span class="st">"path/to/data.db"</span>,<span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<ul>
-<li><p>Third, update your application code.</p>
-<p>You should update it so that it no longer manually creates and initializes a database if it is missing by itself (as it might do now), but instead uses fastmigrate to create the db and to run the migrations, as is shown in the readme. You should check the migration scripts into version control alongside your application code. Your application code should now all be written under the assumption that it will find the database in the state defined by the highest-numbered migration script in the repo.</p></li>
-</ul>
+<section id="enroll-an-existing-db" class="level2">
+<h2 class="anchored" data-anchor-id="enroll-an-existing-db">Enroll an existing db</h2>
+<p>Here’s how to add an existing db to be managed by fastmigrate.</p>
+<ol start="0" type="1">
+<li><p>Back up your database, of course.</p></li>
+<li><p>Run <code>fastmigrate_enroll_db --db /path/to/database.db</code> against your current database.</p>
+<p>This will modify your database, marking it as version 1 by adding a <code>_meta</code> table.</p>
+<p>It will also generate an initial migration script, <code>0001-initialize.sql</code>, which is for creating an empty “version 1” database with the same schema as your current database.</p></li>
+<li><p>Move your current database to somewhere safe, update your application’s db setup code to use fastmigrate, and run it.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> fastmigrate</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>fastmigrate.create_db(<span class="st">"/path/to/database.db"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>fastmigrate.run_migrations(<span class="st">"/path/to/database.db"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># application code continues from here</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Since you moved your real db, fastmigrate will create a new db at that path based on the initial migration script.</p></li>
+<li><p>Check your app, to see if it is working fine.</p>
+<p>If it is, your initialization script is correct, and your can move your real database back into place.</p>
+<p>If not, then you will need to edit that initialization script, so that it produces a database which is equivalent to your current database.</p></li>
+</ol>
+</section>
+<section id="the-reason-for-this-procedure" class="level2">
+<h2 class="anchored" data-anchor-id="the-reason-for-this-procedure">The reason for this procedure</h2>
+<p>As long as you use fastmigrate with valid migration scripts, fastmigrate can guarantee whch version of your database it presented to your application code. This is the value of managed migrations.</p>
+<p>However, to provide this guarantee, you need your database to be managed by fastmigrate – that is, to be explicitly marked with a version, in its <code>_meta</code> table. If you created the database with fastmigrate (using <code>create_db</code> or the <code>fastmigrate_create_db</code> CLI command), then it is managed.</p>
+<p>But what if you are starting with an application built outside of fastmigrate, and you want to <em>enroll</em> the database in fastmigrate?</p>
+<p>To recap the basic idea of what migrations are, the fundamental guarantee which we need to maintain is this: <em>any database which has a fastmigrate version number (like 1, or like 3) is in the state which would be produced by the migration script with that version number (like by <code>0001-initialize.sql</code> or <code>0003-unify-users.sql</code>).</em></p>
+<p>So when enrolling an existing db, you need to assign a version to the db you already have. But since that version number takes its meaning from the migration script which <em>would</em> produce it, you also need to create a migration script which would produce a database like yours. That script is also practically useful. If you ever want to deploy a new instance of your database, or run fresh instancs for debugging, you need that initialization script to create the initial, empty state of a db for your application to use.</p>
+<p><code>fastmigrate_enroll_db</code> is merely a helper for those tasks. It marks your database, and generates an initialization migration script.</p>
+<section id="one-reason-enrollment-needs-manual-inspection" class="level3">
+<h3 class="anchored" data-anchor-id="one-reason-enrollment-needs-manual-inspection">One reason enrollment needs manual inspection</h3>
+<p>Why is this not 100% automatic?</p>
+<p>The tool generates the migration script based on the <em>schema</em> of your existing database. In many cases, that is all that matters for defining the version of a database, because the schema is all that the application code depends on.</p>
+<p>However, this will not be enough if you application requires not only a particular table schema, but also certain <em>initial data values</em> to be present. In that case you will need to add code to your the initialization script which not only creates the necessary tables but also inserts those values.</p>
+<p>For instance, if your application code merely required a <code>user</code> table which tracked settings, you would expect a line like this:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> <span class="fu">user</span> (<span class="kw">id</span> <span class="dt">INTEGER</span>, settings TEXT);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>But if your application code also required that the database start with one row in that table, defining a user with an ID of 1 and settings which were an empty pair of brances, then you would also add a line like so:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">INSERT</span> <span class="kw">INTO</span> <span class="fu">user</span> <span class="kw">VALUES</span> (<span class="dv">1</span>, <span class="dv">0</span>, <span class="st">'{}'</span>);</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>This subltety is a reason why it is not strictly accurate to say migrations version exist only to track schema schema. In fact, they define versions which should track what application code expects, which likely includes versions but not only versions.</p>
 
 
+</section>
+</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">
