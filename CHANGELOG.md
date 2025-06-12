@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.4.0
+
+- Add `fastmigrate_enroll_db` command to CLI
+- Simplify and enhance errors messages and UI copy
+
 ## 0.3.0
 
 ### Enhancements
