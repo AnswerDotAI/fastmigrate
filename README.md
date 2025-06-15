@@ -38,7 +38,7 @@ This will create a db if needed. Then, fastmigrate will detect every validly-nam
 
 This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
 
-If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding migrations](./adding_migrations.qmd)
+If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on [safely adding migrations](./docsrc/adding_migrations.qmd)
 
 ## Key concepts:
 
@@ -69,7 +69,7 @@ The point of the system is that if you adopt it, fastmigrate offers the followin
 > 
 > Furthermore, fastmigrate will never leave a database corrupted, if *your* migration scripts always leave the db unmodified when they fail. (This is relatively easy with sql-based scripts, since they can use sql rollback).
 
-To get these guarantees, you only need to use fastmigrate's public commands and APIs to handle creating the db and running migrations (unless you are [enrolling an existing db](./enrolling.qmd)).
+To get these guarantees, you only need to use fastmigrate's public commands and APIs to handle creating the db and running migrations (unless you are [enrolling an existing db](./docsrc/enrolling.qmd)).
 
 One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
 
@@ -115,7 +115,7 @@ FastMigrate needs to manage database versioning in order to run migrations.
 
 So if you already have a database which was created outside of fastmigrate, then you need to enroll it.
 
-Please see the dedicated note on [enrolling an existing db](./enrolling.qmd).
+Please see the dedicated note on [enrolling an existing db](./docsrc/enrolling.qmd).
 
 ## Miscellaneous Considerations
 
