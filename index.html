@@ -204,7 +204,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Database migration failed!"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <p>This will create a db if needed. Then, fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db’s version number as it proceeds, stopping if any migration fails.</p>
 <p>This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.</p>
-<p>If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on <a href="./adding_migrations.html">safely adding migrations</a></p>
+<p>If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on <a href="./docsrc/adding_migrations.qmd">safely adding migrations</a></p>
 </section>
 <section id="key-concepts" class="level2">
 <h2 class="anchored" data-anchor-id="key-concepts">Key concepts:</h2>
@@ -242,7 +242,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>[!NOTE] Fastmigrate will never leave a database marked with an incorrect version without signalling an error, if <em>your</em> migration scripts reliably exit with an error code whenever they fail.</p>
 <p>Furthermore, fastmigrate will never leave a database corrupted, if <em>your</em> migration scripts always leave the db unmodified when they fail. (This is relatively easy with sql-based scripts, since they can use sql rollback).</p>
 </blockquote>
-<p>To get these guarantees, you only need to use fastmigrate’s public commands and APIs to handle creating the db and running migrations (unless you are <a href="./enrolling.html">enrolling an existing db</a>).</p>
+<p>To get these guarantees, you only need to use fastmigrate’s public commands and APIs to handle creating the db and running migrations (unless you are <a href="./docsrc/enrolling.qmd">enrolling an existing db</a>).</p>
 <p>One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool.</p>
 </section>
 <section id="how-to-use-fastmigrate-from-the-command-line" class="level2">
@@ -271,7 +271,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="how-to-enroll-an-existing-unversioned-database-into-fastmigrate">How to enroll an existing, unversioned database into fastmigrate</h2>
 <p>FastMigrate needs to manage database versioning in order to run migrations.</p>
 <p>So if you already have a database which was created outside of fastmigrate, then you need to enroll it.</p>
-<p>Please see the dedicated note on <a href="./enrolling.html">enrolling an existing db</a>.</p>
+<p>Please see the dedicated note on <a href="./docsrc/enrolling.qmd">enrolling an existing db</a>.</p>
 </section>
 <section id="miscellaneous-considerations" class="level2">
 <h2 class="anchored" data-anchor-id="miscellaneous-considerations">Miscellaneous Considerations</h2>
