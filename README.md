@@ -107,7 +107,7 @@ Here are some commands:
    ```
    fastmigrate_enroll_db --db path/to/data.db
    ```
-   Enroll an existing SQLite database for versioning, adding a default initial migration called `0001-initial.sql`, then running it. Running the initial migration will set the version to 1. This is equivalent to calling `fastmigrate.enroll_db()`
+   Enroll an existing SQLite database for versioning, by generating a default initial migration `0001-initial.sql` from the current schema and marking the database as version 1. This is equivalent to calling `fastmigrate.enroll_db()`
 
 ## How to enroll an existing, unversioned database into fastmigrate
 
