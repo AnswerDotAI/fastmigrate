@@ -95,27 +95,26 @@ def test_get_set_db_version():  # Tests the internal _set_db_version function
         _set_db_version(Path("/nonexistent/path/to/db.db"), 50)
 
 
-def test_ensure_versioned_db():
+def test_ensure_versioned_db(tmp_path):
     """Test ensuring a database is versioned."""
     # Test case 1: Non-existent DB should be created and versioned
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = Path(temp_dir) /  "new.db"
-        
-        # Verify the file doesn't exist yet
-        assert not os.path.exists(db_path)
-        
-        # Call create_db - should create the DB
-        version = create_db(db_path)
-        
-        # Check results
-        assert os.path.exists(db_path), "Database file should have been created"
-        assert version == 0, "Version should be 0 for a new database"
-        
-        # Verify the db structure directly
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
-        assert cursor.fetchone()[0] == 0, "Version in database should be 0"
-        conn.close()
+    db_path = tmp_path / "new.db"
+    
+    # Verify the file doesn't exist yet
+    assert not os.path.exists(db_path)
+    
+    # Call create_db - should create the DB
+    version = create_db(db_path)
+    
+    # Check results
+    assert os.path.exists(db_path), "Database file should have been created"
+    assert version == 0, "Version should be 0 for a new database"
+    
+    # Verify the db structure directly
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
+    assert cursor.fetchone()[0] == 0, "Version in database should be 0"
+    conn.close()
     
     # Test case 2: Existing versioned DB should return its version
     with tempfile.NamedTemporaryFile(suffix='.db') as temp_file:
@@ -171,69 +170,65 @@ def test_extract_version_from_filename():
     assert extract_version_from_filename("0001_wrong_separator.sql") is None
 
 
-def test_get_migration_scripts():
+def test_get_migration_scripts(tmp_path):
     """Test getting migration scripts from a directory."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir = Path(temp_dir)
-        # Create test migration files
-        Path(temp_dir, "0001-first.sql").touch()
-        Path(temp_dir, "0002-second.py").touch()
-        Path(temp_dir, "0005-fifth.sh").touch()
-        Path(temp_dir, "invalid.txt").touch()
-        
-        # Get migration scripts
-        scripts = get_migration_scripts(temp_dir)
-        
-        # Check we have the expected scripts
-        assert len(scripts) == 3
-        assert 1 in scripts
-        assert 2 in scripts
-        assert 5 in scripts
-        assert os.path.basename(scripts[1]) == "0001-first.sql"
-        assert os.path.basename(scripts[2]) == "0002-second.py"
-        assert os.path.basename(scripts[5]) == "0005-fifth.sh"
+    # Create test migration files
+    Path(tmp_path, "0001-first.sql").touch()
+    Path(tmp_path, "0002-second.py").touch()
+    Path(tmp_path, "0005-fifth.sh").touch()
+    Path(tmp_path, "invalid.txt").touch()
+    
+    # Get migration scripts
+    scripts = get_migration_scripts(tmp_path)
+    
+    # Check we have the expected scripts
+    assert len(scripts) == 3
+    assert 1 in scripts
+    assert 2 in scripts
+    assert 5 in scripts
+    assert os.path.basename(scripts[1]) == "0001-first.sql"
+    assert os.path.basename(scripts[2]) == "0002-second.py"
+    assert os.path.basename(scripts[5]) == "0005-fifth.sh"
 
 
-def test_get_migration_scripts_duplicate_version():
+def test_get_migration_scripts_duplicate_version(tmp_path):
     """Test that duplicate version numbers are detected."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create test migration files with duplicate version
-        Path(temp_dir, "0001-first.sql").touch()
-        Path(temp_dir, "0001-duplicate.py").touch()
-        
-        # Get migration scripts - should raise ValueError
-        with pytest.raises(ValueError) as excinfo:
-            get_migration_scripts(Path(temp_dir))
-        
-        assert "Duplicate migration version" in str(excinfo.value)
+    # Create test migration files with duplicate version
+    Path(tmp_path, "0001-first.sql").touch()
+    Path(tmp_path, "0001-duplicate.py").touch()
+    
+    # Get migration scripts - should raise ValueError
+    with pytest.raises(ValueError) as excinfo:
+        get_migration_scripts(Path(tmp_path))
+    
+    assert "Duplicate migration version" in str(excinfo.value)
 
 
-def test_run_migrations_on_unversioned_db():
+def test_run_migrations_on_unversioned_db(tmp_path):
     """Test that run_migrations fails on an unversioned database."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # Create migrations directory
-        migrations_dir = os.path.join(temp_dir, "migrations")
-        os.makedirs(migrations_dir)
-        
-        # Create a simple migration
-        with open(os.path.join(migrations_dir, "0001-create-table.sql"), "w") as f:
-            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
-        
-        # Create a database without initializing it (no _meta table)
-        db_path = os.path.join(temp_dir, "test.db")
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Run migrations - should fail because the database is not versioned
-        assert run_migrations(db_path, migrations_dir) is False
-        
-        # Verify no table was created (migration did not run)
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
-        assert cursor.fetchone() is None, "Migration should not have run on unversioned database"
-        
-        # Also verify there's no _meta table (run_migrations shouldn't create one)
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta'")
-        assert cursor.fetchone() is None, "run_migrations should not have created a _meta table"
-        
-        conn.close()
+    # Create migrations directory
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    
+    # Create a simple migration
+    with open(migrations_dir / "0001-create-table.sql", "w") as f:
+        f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
+    
+    # Create a database without initializing it (no _meta table)
+    db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    # Run migrations - should fail because the database is not versioned
+    assert run_migrations(db_path, migrations_dir) is False
+    
+    # Verify no table was created (migration did not run)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test'")
+    assert cursor.fetchone() is None, "Migration should not have run on unversioned database"
+    
+    # Also verify there's no _meta table (run_migrations shouldn't create one)
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='_meta'")
+    assert cursor.fetchone() is None, "run_migrations should not have created a _meta table"
+    
+    conn.close()

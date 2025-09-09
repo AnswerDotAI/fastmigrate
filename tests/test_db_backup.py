@@ -1,7 +1,6 @@
 import pytest
 import sqlite3
 import os
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -12,16 +11,15 @@ from fastmigrate.core import create_db_backup
 
 
 @pytest.fixture
-def temp_db():
+def temp_db(tmp_path):
     """Provides a temporary directory and a path to a test database."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = os.path.join(temp_dir, "test.db")
-        conn = sqlite3.connect(db_path)
-        conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)")
-        conn.execute("INSERT INTO test (value) VALUES ('original data')")
-        conn.commit()
-        conn.close()
-        yield db_path, temp_dir  # Yield both db_path and temp_dir
+    db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)")
+    conn.execute("INSERT INTO test (value) VALUES ('original data')")
+    conn.commit()
+    conn.close()
+    yield db_path, tmp_path  # Yield both db_path and tmp_path
 
 
 def test_create_db_backup_success(temp_db):
@@ -32,7 +30,7 @@ def test_create_db_backup_success(temp_db):
 
     assert backup_path is not None
     assert os.path.exists(backup_path)
-    assert str(backup_path).startswith(db_path)
+    assert str(backup_path).startswith(str(db_path))
     assert ".backup" in os.path.basename(backup_path)  # Check basename for .backup
 
     # Verify the backup contains the same data

@@ -1,7 +1,6 @@
 """Tests for failure handling in fastmigrate."""
 
 import sqlite3
-import tempfile
 import subprocess
 from pathlib import Path
 
@@ -14,163 +13,159 @@ from fastmigrate.core import run_migrations, _ensure_meta_table
 FAILURES_DIR = Path(__file__).parent / "test_failures"
 
 
-def test_sql_failure():
+def test_sql_failure(tmp_path):
     """Test handling of SQL script failure."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = Path(temp_dir) / "test.db"
-        migrations_dir = FAILURES_DIR / "migrations"
-        
-        # Create empty database file
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
-        
-        # Run migrations - should fail on the second migration
-        result = run_migrations(db_path, migrations_dir)
-        assert result is False
-        
-        # Connect to the database and check the version
-        # It should be at version 1 (first migration succeeded)
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("SELECT version FROM _meta")
-        assert cursor.fetchone()[0] == 1
-        
-        # Check that the first migration was applied and we have table
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test_table'")
-        assert cursor.fetchone() is not None
-        
-        # Check the first two rows were inserted (from first migration)
-        cursor = conn.execute("SELECT name FROM test_table WHERE name IN ('test1', 'test2')")
-        results = cursor.fetchall()
-        assert len(results) == 2
-        
-        # Check we don't have the table from the failed migration
-        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='this_syntax_error'")
-        assert cursor.fetchone() is None
-        
-        conn.close()
+    db_path = tmp_path / "test.db"
+    migrations_dir = FAILURES_DIR / "migrations"
+    
+    # Create empty database file
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    # Initialize the database with _meta table
+    _ensure_meta_table(db_path)
+    
+    # Run migrations - should fail on the second migration
+    result = run_migrations(db_path, migrations_dir)
+    assert result is False
+    
+    # Connect to the database and check the version
+    # It should be at version 1 (first migration succeeded)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("SELECT version FROM _meta")
+    assert cursor.fetchone()[0] == 1
+    
+    # Check that the first migration was applied and we have table
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='test_table'")
+    assert cursor.fetchone() is not None
+    
+    # Check the first two rows were inserted (from first migration)
+    cursor = conn.execute("SELECT name FROM test_table WHERE name IN ('test1', 'test2')")
+    results = cursor.fetchall()
+    assert len(results) == 2
+    
+    # Check we don't have the table from the failed migration
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='this_syntax_error'")
+    assert cursor.fetchone() is None
+    
+    conn.close()
 
 
-def test_cli_sql_failure():
+def test_cli_sql_failure(tmp_path):
     """Test CLI handling of SQL script failure."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = Path(temp_dir) / "test.db"
-        
-        # Create empty database file
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
-        
-        # Run the CLI with path to the failure test suite
-        result = subprocess.run([
-            "fastmigrate_run_migrations",
-            "--db", db_path,
-            "--migrations", FAILURES_DIR / "migrations"
-        ], capture_output=True, text=True)
-        
-        # CLI should exit with non-zero code
-        assert result.returncode != 0
-        
-        # Check that only one migration was applied
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("SELECT version FROM _meta")
-        assert cursor.fetchone()[0] == 1
-        
-        conn.close()
+    db_path = tmp_path / "test.db"
+    
+    # Create empty database file
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    # Initialize the database with _meta table
+    _ensure_meta_table(db_path)
+    
+    # Run the CLI with path to the failure test suite
+    result = subprocess.run([
+        "fastmigrate_run_migrations",
+        "--db", db_path,
+        "--migrations", FAILURES_DIR / "migrations"
+    ], capture_output=True, text=True)
+    
+    # CLI should exit with non-zero code
+    assert result.returncode != 0
+    
+    # Check that only one migration was applied
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("SELECT version FROM _meta")
+    assert cursor.fetchone()[0] == 1
+    
+    conn.close()
 
 
-def test_python_failure():
+def test_python_failure(tmp_path):
     """Test handling of Python script failure."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = Path(temp_dir) / "test.db"
-        migrations_dir = Path(temp_dir) / "migrations"
-        migrations_dir.mkdir()
-        
-        # Create empty database file
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
-        
-        # Create a test database with initial successful migration
-        initial_migration = migrations_dir / "0001-init.sql"
-        with open(initial_migration, "w") as f:
-            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
-        
-        # Create a Python migration that will fail
-        python_migration = migrations_dir / "0002-fail.py"
-        with open(python_migration, "w") as f:
-            f.write("""#!/usr/bin/env python
+    db_path = tmp_path / "test.db"
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    
+    # Create empty database file
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    # Initialize the database with _meta table
+    _ensure_meta_table(db_path)
+    
+    # Create a test database with initial successful migration
+    initial_migration = migrations_dir / "0001-init.sql"
+    with open(initial_migration, "w") as f:
+        f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
+    
+    # Create a Python migration that will fail
+    python_migration = migrations_dir / "0002-fail.py"
+    with open(python_migration, "w") as f:
+        f.write("""#!/usr/bin/env python
 import sys
 print("Failing intentionally")
 sys.exit(1)
 """)
-        
-        # Make the Python script executable
-        python_migration.chmod(0o755)
-        
-        # Run migrations - should fail on the Python script
-        result = run_migrations(db_path, migrations_dir)
-        assert result is False
-        
-        # Connect to the database and check the version
-        # It should be at version 1 (first migration succeeded)
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("SELECT version FROM _meta")
-        assert cursor.fetchone()[0] == 1
-        
-        conn.close()
+    
+    # Make the Python script executable
+    python_migration.chmod(0o755)
+    
+    # Run migrations - should fail on the Python script
+    result = run_migrations(db_path, migrations_dir)
+    assert result is False
+    
+    # Connect to the database and check the version
+    # It should be at version 1 (first migration succeeded)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("SELECT version FROM _meta")
+    assert cursor.fetchone()[0] == 1
+    
+    conn.close()
 
 
-def test_shell_failure():
+def test_shell_failure(tmp_path):
     """Test handling of shell script failure."""
-    with tempfile.TemporaryDirectory() as temp_dir:
-        db_path = Path(temp_dir) / "test.db"
-        migrations_dir = Path(temp_dir) / "migrations"
-        migrations_dir.mkdir()
-        
-        # Create empty database file
-        conn = sqlite3.connect(db_path)
-        conn.close()
-        
-        # Initialize the database with _meta table
-        _ensure_meta_table(db_path)
-        
-        # Create a test database with initial successful migration
-        initial_migration = migrations_dir / "0001-init.sql"
-        with open(initial_migration, "w") as f:
-            f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
-        
-        # Create a shell script that will fail
-        shell_migration = migrations_dir / "0002-fail.sh"
-        with open(shell_migration, "w") as f:
-            f.write("""#!/bin/sh
+    db_path = tmp_path / "test.db"
+    migrations_dir = tmp_path / "migrations"
+    migrations_dir.mkdir()
+    
+    # Create empty database file
+    conn = sqlite3.connect(db_path)
+    conn.close()
+    
+    # Initialize the database with _meta table
+    _ensure_meta_table(db_path)
+    
+    # Create a test database with initial successful migration
+    initial_migration = migrations_dir / "0001-init.sql"
+    with open(initial_migration, "w") as f:
+        f.write("CREATE TABLE test (id INTEGER PRIMARY KEY);")
+    
+    # Create a shell script that will fail
+    shell_migration = migrations_dir / "0002-fail.sh"
+    with open(shell_migration, "w") as f:
+        f.write("""#!/bin/sh
 echo "Failing intentionally"
 exit 2
 """)
-        
-        # Make the shell script executable
-        shell_migration.chmod(0o755)
-        
-        # Run migrations - should fail on the shell script
-        result = run_migrations(db_path, migrations_dir)
-        assert result is False
-        
-        # Connect to the database and check the version
-        # It should be at version 1 (first migration succeeded)
-        conn = sqlite3.connect(db_path)
-        cursor = conn.execute("SELECT version FROM _meta")
-        assert cursor.fetchone()[0] == 1
-        
-        conn.close()
+    
+    # Make the shell script executable
+    shell_migration.chmod(0o755)
+    
+    # Run migrations - should fail on the shell script
+    result = run_migrations(db_path, migrations_dir)
+    assert result is False
+    
+    # Connect to the database and check the version
+    # It should be at version 1 (first migration succeeded)
+    conn = sqlite3.connect(db_path)
+    cursor = conn.execute("SELECT version FROM _meta")
+    assert cursor.fetchone()[0] == 1
+    
+    conn.close()
 
 
-def test_testsuite_failure_cli():
+def test_testsuite_failure_cli(tmp_path):
     """Test CLI with the failure test suite."""
     # Test each migration type failure using separate databases
     migration_files = [
@@ -179,51 +174,54 @@ def test_testsuite_failure_cli():
         {"file": "0004-shell-failure.sh", "expected_version": 1},
     ]
     
-    for migration in migration_files:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            db_path = Path(temp_dir) / "test.db"
-            
-            # Create empty database file
-            conn = sqlite3.connect(db_path)
-            conn.close()
-            
-            # Initialize the database with _meta table
-            _ensure_meta_table(db_path)
-            
-            # Create a temporary migrations directory with just the successful migration
-            # and the specific failure migration we want to test
-            migrations_dir = Path(temp_dir) / "migrations"
-            migrations_dir.mkdir()
-            
-            # Copy the successful first migration
-            with open(FAILURES_DIR / "migrations" / "0001-initial-setup.sql", "r") as src:
-                with open(migrations_dir / "0001-initial-setup.sql", "w") as dst:
-                    dst.write(src.read())
-            
-            # Copy the specific failure migration
-            with open(FAILURES_DIR / "migrations" / migration["file"], "r") as src:
-                with open(migrations_dir / migration["file"], "w") as dst:
-                    dst.write(src.read())
-            
-            # Make executable if needed
-            if migration["file"].endswith((".py", ".sh")):
-                (migrations_dir / migration["file"]).chmod(0o755)
-            
-            # Run the CLI
-            result = subprocess.run([
-                "fastmigrate_run_migrations",
-                "--db", db_path,
-                "--migrations", migrations_dir
-            ], capture_output=True, text=True)
-            
-            # CLI should exit with non-zero code
-            assert result.returncode != 0, f"Expected failure for {migration['file']}"
-            
-            # Check that the database was created but only one migration applied
-            assert db_path.exists()
-            conn = sqlite3.connect(db_path)
-            cursor = conn.execute("SELECT version FROM _meta")
-            assert cursor.fetchone()[0] == migration["expected_version"], \
-                f"Wrong version for {migration['file']}"
-            
-            conn.close()
+    for i, migration in enumerate(migration_files):
+        # Create a unique subdirectory for each test iteration
+        test_dir = tmp_path / f"test_{i}"
+        test_dir.mkdir()
+        
+        db_path = test_dir / "test.db"
+        
+        # Create empty database file
+        conn = sqlite3.connect(db_path)
+        conn.close()
+        
+        # Initialize the database with _meta table
+        _ensure_meta_table(db_path)
+        
+        # Create a temporary migrations directory with just the successful migration
+        # and the specific failure migration we want to test
+        migrations_dir = test_dir / "migrations"
+        migrations_dir.mkdir()
+        
+        # Copy the successful first migration
+        with open(FAILURES_DIR / "migrations" / "0001-initial-setup.sql", "r") as src:
+            with open(migrations_dir / "0001-initial-setup.sql", "w") as dst:
+                dst.write(src.read())
+        
+        # Copy the specific failure migration
+        with open(FAILURES_DIR / "migrations" / migration["file"], "r") as src:
+            with open(migrations_dir / migration["file"], "w") as dst:
+                dst.write(src.read())
+        
+        # Make executable if needed
+        if migration["file"].endswith((".py", ".sh")):
+            (migrations_dir / migration["file"]).chmod(0o755)
+        
+        # Run the CLI
+        result = subprocess.run([
+            "fastmigrate_run_migrations",
+            "--db", db_path,
+            "--migrations", migrations_dir
+        ], capture_output=True, text=True)
+        
+        # CLI should exit with non-zero code
+        assert result.returncode != 0, f"Expected failure for {migration['file']}"
+        
+        # Check that the database was created but only one migration applied
+        assert db_path.exists()
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT version FROM _meta")
+        assert cursor.fetchone()[0] == migration["expected_version"], \
+            f"Wrong version for {migration['file']}"
+        
+        conn.close()
