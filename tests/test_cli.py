@@ -286,7 +286,7 @@ def test_cli_enroll_db_success(tmp_path):
     cursor = conn.execute("SELECT name FROM users WHERE name='test_user'")
     assert cursor.fetchone() is not None
     
-    # Version should be 0
+    # Version should be 1
     cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
     assert cursor.fetchone()[0] == 1
     
