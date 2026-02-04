@@ -50,7 +50,7 @@ def ensure_versioned_db(db_path:Path) -> int:
 
 def _ensure_meta_table(db_path: Path) -> None:
     """Create the _meta table if it doesn't exist, with a single row constraint.
-    
+
     Uses a single-row pattern with a PRIMARY KEY on a constant value (1).
     This ensures we can only have one row in the table.
 
@@ -58,10 +58,10 @@ def _ensure_meta_table(db_path: Path) -> None:
     versioned db manually, for instance, for testing or for enrolling
     a non-version db after verifying its values and schema are what
     would be produced by migration scripts.
-    
+
     Args:
         db_path: Path to the SQLite database
-        
+
     Raises:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read or write to the database
@@ -71,19 +71,19 @@ def _ensure_meta_table(db_path: Path) -> None:
     # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
-    
+
     conn = None
     try:
         conn = sqlite3.connect(db_path)
         # Check if _meta table exists
         cursor = conn.execute(
             """
-            SELECT name, sql FROM sqlite_master 
+            SELECT name, sql FROM sqlite_master
             WHERE type='table' AND name='_meta'
             """
         )
         row = cursor.fetchone()
-        
+
         if row is None:
             # Table doesn't exist, create it with version 0
             try:
@@ -105,13 +105,13 @@ def _ensure_meta_table(db_path: Path) -> None:
 
 def get_db_version(db_path: Path) -> int:
     """Get the current database version.
-    
+
     Args:
         db_path: Path to the SQLite database
-        
+
     Returns:
         int: The current database version
-        
+
     Raises:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to read the db version because it is not managed
@@ -120,7 +120,7 @@ def get_db_version(db_path: Path) -> int:
     # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
-    
+
     conn = None
     try:
         conn = sqlite3.connect(db_path)
@@ -140,14 +140,14 @@ def get_db_version(db_path: Path) -> int:
 
 def _set_db_version(db_path: Path, version: int) -> None:
     """Set the database version.
-    
-    Uses an UPSERT pattern (INSERT OR REPLACE) to ensure we always set the 
+
+    Uses an UPSERT pattern (INSERT OR REPLACE) to ensure we always set the
     version for id=1, even if the row doesn't exist yet.
-    
+
     Args:
         db_path: Path to the SQLite database
         version: The version number to set
-        
+
     Raises:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to write to the database
@@ -156,7 +156,7 @@ def _set_db_version(db_path: Path, version: int) -> None:
     # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
-    
+
     conn = None
     try:
         conn = sqlite3.connect(db_path)
@@ -164,9 +164,9 @@ def _set_db_version(db_path: Path, version: int) -> None:
             with conn:
                 conn.execute(
                     """
-                    INSERT OR REPLACE INTO _meta (id, version) 
+                    INSERT OR REPLACE INTO _meta (id, version)
                     VALUES (1, ?)
-                    """, 
+                    """,
                     (version,)
                 )
         except sqlite3.Error as e:
@@ -189,7 +189,7 @@ def extract_version_from_filename(filename: str) -> Optional[int]:
 
 def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     """Get all valid migration scripts from the migrations directory.
-    
+
     Returns a dictionary mapping version numbers to file paths.
     Raises ValueError if two scripts have the same version number.
     """
@@ -197,7 +197,7 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     migration_scripts: Dict[int, Path] = {}
     if not migrations_dir.exists():
         return migration_scripts
-    
+
     for file_path in [x for x in migrations_dir.iterdir() if x.is_file()]:
         version = extract_version_from_filename(file_path.name)
         if version is not None:
@@ -212,11 +212,11 @@ def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
 
 def execute_sql_script(db_path: Path, script_path: Path) -> bool:
     """Execute a SQL script against the database.
-    
+
     Args:
         db_path: Path to the SQLite database file
         script_path: Path to the SQL script file
-        
+
     Returns:
         bool: True if the script executed successfully, False otherwise
     """
@@ -226,26 +226,26 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
     conn = None
     try:
         conn = sqlite3.connect(db_path)
-        
+
         # Read script content
         script_content = script_path.read_text()
-        
+
         # Execute the script
         conn.executescript(script_content)
         return True
-        
+
     except sqlite3.Error as e:
         # SQL error occurred
         print(f"Error executing SQL script {script_path}:", file=stderr)
         print(f"  {e}", file=stderr)
         return False
-    
+
     except Exception as e:
         # Handle other errors (file not found, etc.)
         print(f"Error executing SQL script {script_path}:", file=stderr)
         print(f"  {e}", file=stderr)
         return False
-        
+
     finally:
         if conn:
             conn.close()
@@ -254,7 +254,7 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
 def execute_python_script(db_path: Path, script_path: Path) -> bool:
     """Execute a Python script."""
     db_path = Path(db_path)
-    script_path = Path(script_path)    
+    script_path = Path(script_path)
     try:
         subprocess.run(
             [sys.executable, script_path, db_path],
@@ -272,7 +272,7 @@ def execute_python_script(db_path: Path, script_path: Path) -> bool:
 def execute_shell_script(db_path: Path, script_path: Path) -> bool:
     """Execute a shell script."""
     db_path = Path(db_path)
-    script_path = Path(script_path)    
+    script_path = Path(script_path)
     try:
         subprocess.run(
             ["sh", script_path, db_path],
@@ -359,9 +359,9 @@ def create_database_backup(db_path:Path) -> Path | None:
 def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     """Execute a migration script based on its file extension."""
     db_path = Path(db_path)
-    script_path = Path(script_path)    
+    script_path = Path(script_path)
     ext = os.path.splitext(script_path)[1].lower()
-    
+
     if ext == ".sql":
         return execute_sql_script(db_path, script_path)
     elif ext == ".py":
@@ -374,12 +374,12 @@ def execute_migration_script(db_path: Path, script_path: Path) -> bool:
 
 
 def run_migrations(
-    db_path: Path, 
+    db_path: Path,
     migrations_dir: Path,
     verbose: bool = False
 ) -> bool:
     """Run all pending migrations.
-    
+
     Args:
         db_path: Path to the SQLite database file
         migrations_dir: Path to the directory containing migration scripts
@@ -388,23 +388,23 @@ def run_migrations(
     Precondition:
     - DB must exist
     - DB must be versioned
-    
+
     Returns True if all migrations succeed, False otherwise.
     """
     db_path = Path(db_path)
-    migrations_dir = Path(migrations_dir)   
+    migrations_dir = Path(migrations_dir)
     # Keep track of migration statistics
     stats = {
         "applied": 0,
         "failed": 0
     }
-    
+
     # Check if database file exists
     if not db_path.exists():
         print(f"Error: Database file does not exist: {db_path}", file=stderr)
         print("The database file must exist before running migrations.",file=stderr)
         return False
-    
+
     try:
         # Ensure this is a managed db
         try:
@@ -416,73 +416,73 @@ This is because it is not managed by fastmigrate. Please do one of the following
 
 1. Create a new, managed db using `fastmigrate.create_db()` or
 `fastmigrate_create_db`
-            
+
 2. Enroll your existing database, as described in
 https://answerdotai.github.io/fastmigrate/enrolling.html""",file=stderr)
             return False
-        
+
         # Get current version
         current_version = get_db_version(db_path)
-        
+
         # Get all migration scripts
         try:
             migration_scripts = get_migration_scripts(migrations_dir)
         except ValueError as e:
             print(f"Error: {e}", file=stderr)
             return False
-        
+
         # Find pending migrations
         pending_migrations = {
             version: path
             for version, path in migration_scripts.items()
             if version > current_version
         }
-        
+
         if not pending_migrations:
             if verbose:
                 print(f"Database is up to date (version {current_version})")
             return True
-        
+
         # Sort migrations by version
         sorted_versions = sorted(pending_migrations.keys())
-            
+
         # Execute migrations
         for version in sorted_versions:
             script_path = pending_migrations[version]
             script_name = script_path.name
-            
+
             if verbose:
                 print(f"Applying migration {version}: {script_name}")
-            
+
             # Each script will open its own connection
-            
+
             # Execute the migration script
             success = execute_migration_script(db_path, script_path)
-            
+
             if not success:
                 # Show summary of failure - always show errors regardless of verbose flag
                 stats["failed"] += 1
                 print(f"""Migration failed: {script_path}
   • {stats['applied']} migrations applied
   • {stats['failed']} migrations failed""", file=stderr)
-                
+
                 return False
-            
+
             stats["applied"] += 1
-            
+
             # Update version
             _set_db_version(db_path, version)
             if verbose:
                 print(f"✓ Database updated to version {version}")
-        
+
         # Show summary of successful run
         if stats["applied"] > 0 and verbose:
             print("\nMigration Complete")
             print(f"  • {stats['applied']} migrations applied")
             print(f"  • Database now at version {sorted_versions[-1]}")
-        
+
         return True
-    
+
     except sqlite3.Error as e:
         print(f"Database error: {e}", file=stderr)
         return False
@@ -492,16 +492,16 @@ https://answerdotai.github.io/fastmigrate/enrolling.html""",file=stderr)
 
 def get_db_schema(db_path: Path) -> str:
     """Get the SQL schema of a SQLite database file.
-    
-    This function retrieves the CREATE statements for all tables, 
+
+    This function retrieves the CREATE statements for all tables,
     indices, triggers, and views in the database.
-    
+
     Args:
         db_path: Path to the SQLite database file
-        
+
     Returns:
         str: The SQL schema as a string
-        
+
     Raises:
         FileNotFoundError: If database file doesn't exist
         sqlite3.Error: If unable to access the database
@@ -514,5 +514,5 @@ def get_db_schema(db_path: Path) -> str:
     shell.process_command('.schema')
     sql = out.getvalue()
     if 'CREATE TABLE' in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
-    if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")    
+    if 'CREATE INDEX' in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")
     return sql

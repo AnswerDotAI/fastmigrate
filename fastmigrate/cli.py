@@ -66,7 +66,7 @@ def backup_db(
     """
     db_path, _ = _get_config(config_path, db)
     if core.create_db_backup(db_path) is None:
-        sys.exit(1) 
+        sys.exit(1)
 
 @call_parse
 def check_version(
@@ -78,7 +78,7 @@ def check_version(
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
-    print(f"FastMigrate version: {version('fastmigrate')}")    
+    print(f"FastMigrate version: {version('fastmigrate')}")
     db_path, _ = _get_config(config_path, db)
     if not db_path.exists():
         print(f"Database file does not exist: {db_path}")
@@ -88,7 +88,7 @@ def check_version(
         print(f"Database version: {db_version}")
     except sqlite3.Error:
         print("Database is unversioned (no _meta table)")
-    return   
+    return
 
 
 @call_parse
@@ -108,18 +108,18 @@ def create_db(
     try:
         # Check if file existed before we call create_db
         file_existed_before = db_path.exists()
-    
+
         version = core.create_db(db_path)
-    
+
         if not db_path.exists():
             print(f"Error: Expected database file to be created at {db_path}")
             sys.exit(1)
-    
+
         if not file_existed_before:
             print(f"Created new versioned SQLite database with version=0 at: {db_path}")
         else:
             print(f"A versioned database (version: {version}) already exists at: {db_path}")
-    
+
         sys.exit(0)
     except sqlite3.Error as e:
         print(f"An unversioned db already exists at {db_path}, or there was some other write error.\nError: {e}")
@@ -147,8 +147,8 @@ def enroll_db(
     except sqlite3.Error: pass
     if not migrations_path.exists(): migrations_path.mkdir(parents=True)
     initial_migration = migrations_path / "0001-initialize.sql"
-    schema = core.get_db_schema(db_path)    
-    initial_migration.write_text(schema)    
+    schema = core.get_db_schema(db_path)
+    initial_migration.write_text(schema)
     core._ensure_meta_table(db_path)
     core._set_db_version(db_path,1)
 
@@ -165,7 +165,7 @@ def run_migrations(
     config file, unless they are equal to default values.
     """
     db_path, migrations_path = _get_config(config_path, db, migrations)
-    success = core.run_migrations(db_path, migrations_path, verbose=True)    
+    success = core.run_migrations(db_path, migrations_path, verbose=True)
     if not success:
         sys.exit(1)
 

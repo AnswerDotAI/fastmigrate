@@ -60,18 +60,7 @@ Fastmigrate implements the standard database migration pattern, so these key con
   - determining if there are any migration scripts with versions higher than the db version
   - trying to run those scripts
 
-## What fastmigrate guarantees
-
-The point of the system is that if you adopt it, fastmigrate offers the following two guarantees:
-
-> [!NOTE]
-> Fastmigrate will never leave a database marked with an incorrect version without signalling an error, if *your* migration scripts reliably exit with an error code whenever they fail.
-> 
-> Furthermore, fastmigrate will never leave a database corrupted, if *your* migration scripts always leave the db unmodified when they fail. (This is relatively easy with sql-based scripts, since they can use sql rollback).
-
-To get these guarantees, you only need to use fastmigrate's public commands and APIs to handle creating the db and running migrations (unless you are [enrolling an existing db](./docsrc/enrolling.qmd)).
-
-One easy way to experiment with these core operations, for instance when testing a new migration, is via the command line tool. 
+When Fastmigrate encounters an error, it stops. It does not attempt to roll back or reverse. Therefore, if you want to ensure your migrations are never left half-completed mid-script, add appropriate transactions inside your sql.
 
 ## How to use fastmigrate from the command line
 
