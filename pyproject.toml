@@ -4,17 +4,19 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastmigrate"
-version = "0.4.0"
+dynamic = ["version"]
 description = "Structured migration of data in SQLite databases"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 dependencies = [
-    "apswutils>=0.0.2"
+    "apswutils>=0.0.2",
+    "pytest-mock>=3.15.1",
 ]
 
 [dependency-groups]
 dev = [
+    "fastship>=0.0.7",
     "pytest>=7.0.0",
     "mypy>=1.0.0",
     "pytest-mock>=3.14.0",
@@ -41,3 +43,6 @@ disallow_incomplete_defs = true
 
 [tool.setuptools]
 packages = ["fastmigrate"]
+
+[tool.setuptools.dynamic]
+version = { attr = "fastmigrate.__version__" }
