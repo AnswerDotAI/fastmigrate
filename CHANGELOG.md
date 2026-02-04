@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.4.1
+
+- fastship
+
 ## 0.4.0
 
 - Add `fastmigrate_enroll_db` command to CLI
