@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Enrolling an existing db – FastMigrate</title>
+<title>Custom database backends – FastMigrate</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -140,7 +140,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./enrolling.html">Enrolling an existing db</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./custom_backends.html">Custom database backends</a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -160,13 +160,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./enrolling.html" class="sidebar-item-text sidebar-link active">
+  <a href="./enrolling.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Enrolling an existing db</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./custom_backends.html" class="sidebar-item-text sidebar-link">
+  <a href="./custom_backends.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text">Custom database backends</span></a>
   </div>
 </li>
@@ -181,7 +181,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Enrolling an existing db</h1>
+<h1 class="title">Custom database backends</h1>
 </div>
 
 
@@ -198,46 +198,77 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<section id="enroll-an-existing-db" class="level2">
-<h2 class="anchored" data-anchor-id="enroll-an-existing-db">Enroll an existing db</h2>
-<p>Here’s how to add an existing db to be managed by fastmigrate.</p>
-<ol start="0" type="1">
-<li><p>Back up your database, of course.</p></li>
-<li><p>Run <code>fastmigrate_enroll_db --db /path/to/database.db</code> against your current database.</p>
-<p>This will modify your database, marking it as version 1 by adding a <code>_meta</code> table.</p>
-<p>It will also generate an initial migration script, <code>0001-initialize.sql</code>, which is for creating an empty “version 1” database with the same schema as your current database.</p></li>
-<li><p>Move your current database to somewhere safe, update your application’s db setup code to use fastmigrate, and run it.</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> fastmigrate</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>fastmigrate.create_db(<span class="st">"/path/to/database.db"</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>fastmigrate.run_migrations(<span class="st">"/path/to/database.db"</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># application code continues from here</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>Since you moved your real db, fastmigrate will create a new db at that path based on the initial migration script.</p></li>
-<li><p>Check your app, to see if it is working fine.</p>
-<p>If it is, your initialization script is correct, and your can move your real database back into place.</p>
-<p>If not, then you will need to edit that initialization script, so that it produces a database which is equivalent to your current database.</p></li>
-</ol>
+<p>Fastmigrate is <strong>SQLite-first</strong> by default.</p>
+<p>If you want to use fastmigrate’s migration-runner with another database driver (asyncpg, psycopg3, SQLAlchemy, DuckDB, etc.), you can provide a tiny backend adapter in your migrations directory:</p>
+<pre><code>migrations/config.py</code></pre>
+<p>When this file exists, <code>fastmigrate.run_migrations()</code> will delegate the DB-specific operations to it:</p>
+<ul>
+<li>ensure a <code>_meta</code> table exists (creating it if missing)</li>
+<li>get and set the schema version</li>
+<li>execute <code>.sql</code> migration files</li>
+</ul>
+<p><code>.py</code> and <code>.sh</code> migrations are executed as separate processes as usual, with <code>str(db)</code> passed as the first positional argument.</p>
+<section id="minimal-required-functions" class="level2">
+<h2 class="anchored" data-anchor-id="minimal-required-functions">Minimal required functions</h2>
+<p>Your <code>migrations/config.py</code> must define the following functions. Each function may be <strong>sync or async</strong>. If a function returns an awaitable, fastmigrate automatically awaits it.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_connection(db):</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Return any handle you want fastmigrate to pass around (engine, pool, etc)."""</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ensure_meta_table(conn):</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Create the _meta table (and an initial version row) if missing."""</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_version(conn) <span class="op">-&gt;</span> <span class="bu">int</span>:</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Return the current version from _meta."""</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> set_version(conn, version: <span class="bu">int</span>):</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Persist the schema version in _meta."""</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> execute_sql(conn, sql: <span class="bu">str</span>):</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Execute a SQL migration.</span></span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="co">    Return True/None on success; return False or raise on failure.</span></span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a><span class="co">    """</span></span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="co"># optional</span></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> close_connection(conn):</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Dispose/close the handle returned by get_connection."""</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </section>
-<section id="the-reason-for-this-procedure" class="level2">
-<h2 class="anchored" data-anchor-id="the-reason-for-this-procedure">The reason for this procedure</h2>
-<p>As long as you use fastmigrate with valid migration scripts, fastmigrate can guarantee whch version of your database it presented to your application code. This is the value of managed migrations.</p>
-<p>However, to provide this guarantee, you need your database to be managed by fastmigrate – that is, to be explicitly marked with a version, in its <code>_meta</code> table. If you created the database with fastmigrate (using <code>create_db</code> or the <code>fastmigrate_create_db</code> CLI command), then it is managed.</p>
-<p>But what if you are starting with an application built outside of fastmigrate, and you want to <em>enroll</em> the database in fastmigrate?</p>
-<p>To recap the basic idea of what migrations are, the fundamental guarantee which we need to maintain is this: <em>any database which has a fastmigrate version number (like 1, or like 3) is in the state which would be produced by the migration script with that version number (like by <code>0001-initialize.sql</code> or <code>0003-unify-users.sql</code>).</em></p>
-<p>So when enrolling an existing db, you need to assign a version to the db you already have. But since that version number takes its meaning from the migration script which <em>would</em> produce it, you also need to create a migration script which would produce a database like yours. That script is also practically useful. If you ever want to deploy a new instance of your database, or run fresh instancs for debugging, you need that initialization script to create the initial, empty state of a db for your application to use.</p>
-<p><code>fastmigrate_enroll_db</code> is merely a helper for those tasks. It marks your database, and generates an initialization migration script.</p>
-<section id="one-reason-enrollment-needs-manual-inspection" class="level3">
-<h3 class="anchored" data-anchor-id="one-reason-enrollment-needs-manual-inspection">One reason enrollment needs manual inspection</h3>
-<p>Why is this not 100% automatic?</p>
-<p>The tool generates the migration script based on the <em>schema</em> of your existing database. In many cases, that is all that matters for defining the version of a database, because the schema is all that the application code depends on.</p>
-<p>However, this will not be enough if you application requires not only a particular table schema, but also certain <em>initial data values</em> to be present. In that case you will need to add code to your the initialization script which not only creates the necessary tables but also inserts those values.</p>
-<p>For instance, if your application code merely required a <code>user</code> table which tracked settings, you would expect a line like this:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> <span class="fu">user</span> (<span class="kw">id</span> <span class="dt">INTEGER</span>, settings TEXT);</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>But if your application code also required that the database start with one row in that table, defining a user with an ID of 1 and settings which were an empty pair of brances, then you would also add a line like so:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode sql code-with-copy"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">INSERT</span> <span class="kw">INTO</span> <span class="fu">user</span> <span class="kw">VALUES</span> (<span class="dv">1</span>, <span class="dv">0</span>, <span class="st">'{}'</span>);</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>This subltety is a reason why it is not strictly accurate to say migrations version exist only to track schema schema. In fact, they define versions which should track what application code expects, which likely includes versions but not only versions.</p>
+<section id="example-sqlalchemy-adapter-sqlite" class="level2">
+<h2 class="anchored" data-anchor-id="example-sqlalchemy-adapter-sqlite">Example: SQLAlchemy adapter (SQLite)</h2>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sqlalchemy <span class="im">import</span> create_engine</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_connection(db):</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> create_engine(<span class="ss">f"sqlite+pysqlite:///</span><span class="sc">{</span>db<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> close_connection(engine):</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    engine.dispose()</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ensure_meta_table(engine):</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.begin() <span class="im">as</span> conn:</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        conn.exec_driver_sql(</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            <span class="st">"CREATE TABLE IF NOT EXISTS _meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)"</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>        row <span class="op">=</span> conn.exec_driver_sql(<span class="st">"SELECT version FROM _meta WHERE id=1"</span>).fetchone()</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> row <span class="kw">is</span> <span class="va">None</span>:</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>            conn.exec_driver_sql(<span class="st">"INSERT INTO _meta (id, version) VALUES (1, 0)"</span>)</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_version(engine):</span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.<span class="ex">connect</span>() <span class="im">as</span> conn:</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>        row <span class="op">=</span> conn.exec_driver_sql(<span class="st">"SELECT version FROM _meta WHERE id=1"</span>).fetchone()</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">int</span>(row[<span class="dv">0</span>]) <span class="cf">if</span> row <span class="cf">else</span> <span class="dv">0</span></span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> set_version(engine, version: <span class="bu">int</span>):</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.begin() <span class="im">as</span> conn:</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>        conn.exec_driver_sql(<span class="st">"DELETE FROM _meta WHERE id=1"</span>)</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>        conn.exec_driver_sql(<span class="st">"INSERT INTO _meta (id, version) VALUES (1, ?)"</span>, (<span class="bu">int</span>(version),))</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> execute_sql(engine, sql: <span class="bu">str</span>):</span>
+<span id="cb3-29"><a href="#cb3-29" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.begin() <span class="im">as</span> conn:</span>
+<span id="cb3-30"><a href="#cb3-30" aria-hidden="true" tabindex="-1"></a>        <span class="co"># This split is intentionally simple; use a more robust approach if needed.</span></span>
+<span id="cb3-31"><a href="#cb3-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> stmt <span class="kw">in</span> [s.strip() <span class="cf">for</span> s <span class="kw">in</span> sql.split(<span class="st">";"</span>) <span class="cf">if</span> s.strip()]:</span>
+<span id="cb3-32"><a href="#cb3-32" aria-hidden="true" tabindex="-1"></a>            conn.exec_driver_sql(stmt)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
-</section>
 </section>
 
 </main> <!-- /main -->
@@ -646,4 +677,4 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 
 
-<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions"><ul><li><a href="https://github.com/AnswerDotAI/fastmigrate/edit/main/enrolling.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/AnswerDotAI/fastmigrate/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>
+<footer class="footer"><div class="nav-footer"><div class="nav-footer-center"><div class="toc-actions"><ul><li><a href="https://github.com/AnswerDotAI/fastmigrate/edit/main/custom_backends.qmd" class="toc-action"><i class="bi bi-github"></i>Edit this page</a></li><li><a href="https://github.com/AnswerDotAI/fastmigrate/issues/new" class="toc-action"><i class="bi empty"></i>Report an issue</a></li></ul></div></div></div></footer></body></html>

@@ -164,6 +164,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">Enrolling an existing db</span></a>
   </div>
 </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./custom_backends.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom database backends</span></a>
+  </div>
+</li>
     </ul>
     </div>
 </nav>
@@ -186,7 +192,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># or if using uv add it to your pyproject.toml</span></span>
 <span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> add fastmigrate</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-<p>To run all the tests, you also need to install the sqlite3 executable on your system.</p>
+<p>Fastmigrate itself does not require the external <code>sqlite3</code> command-line tool. If you choose to write <code>.sh</code> migrations that invoke <code>sqlite3</code> yourself, you’ll need it installed, but <code>.sql</code> migrations run via Python’s built-in sqlite3.</p>
 </section>
 <section id="how-to-use-fastmigrate-in-your-app" class="level2">
 <h2 class="anchored" data-anchor-id="how-to-use-fastmigrate-in-your-app">How to use fastmigrate in your app</h2>
@@ -237,6 +243,69 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>When Fastmigrate encounters an error, it stops. It does not attempt to roll back or reverse. Therefore, if you want to ensure your migrations are never left half-completed mid-script, add appropriate transactions inside your sql.</p>
 </section>
+<section id="using-fastmigrate-with-non-sqlite-databases" class="level2">
+<h2 class="anchored" data-anchor-id="using-fastmigrate-with-non-sqlite-databases">Using fastmigrate with non-SQLite databases</h2>
+<p>Fastmigrate is <strong>SQLite-first</strong> by default, but you can make it <strong>database-independent</strong> by providing a backend adapter at:</p>
+<pre><code>&lt;your migrations dir&gt;/config.py</code></pre>
+<p>When this file exists, :func:<code>fastmigrate.run_migrations</code> will:</p>
+<ul>
+<li>load this module dynamically</li>
+<li>call your adapter hooks to:
+<ul>
+<li>create the <code>_meta</code> table (if needed)</li>
+<li>read/update the version number</li>
+<li>execute <code>.sql</code> migrations using your database driver</li>
+</ul></li>
+<li>still run <code>.py</code> and <code>.sh</code> migrations the same way as usual (passing <code>str(db)</code> as the first positional argument)</li>
+</ul>
+<section id="minimal-required-functions-in-config.py" class="level3">
+<h3 class="anchored" data-anchor-id="minimal-required-functions-in-config.py">Minimal required functions in <code>config.py</code></h3>
+<p>Each hook may be <strong>sync or async</strong>. If a hook returns an awaitable/coroutine, fastmigrate will automatically await it.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_connection(db): ...</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ensure_meta_table(conn): ...</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_version(conn) <span class="op">-&gt;</span> <span class="bu">int</span>: ...</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> set_version(conn, version: <span class="bu">int</span>): ...</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> execute_sql(conn, sql: <span class="bu">str</span>): ...</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="co"># optional</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> close_connection(conn): ...</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="example-sqlalchemy-adapter-sqlite" class="level3">
+<h3 class="anchored" data-anchor-id="example-sqlalchemy-adapter-sqlite">Example: SQLAlchemy adapter (SQLite)</h3>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># migrations/config.py</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> sqlalchemy <span class="im">import</span> create_engine, text</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_connection(db): <span class="cf">return</span> create_engine(<span class="ss">f"sqlite+pysqlite:///</span><span class="sc">{</span>db<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> close_connection(engine): engine.dispose()</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> ensure_meta_table(engine):</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.begin() <span class="im">as</span> conn:</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        conn.exec_driver_sql(</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>            <span class="st">"CREATE TABLE IF NOT EXISTS _meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)"</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        )</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        row <span class="op">=</span> conn.exec_driver_sql(<span class="st">"SELECT version FROM _meta WHERE id=1"</span>).fetchone()</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> row <span class="kw">is</span> <span class="va">None</span>: conn.exec_driver_sql(<span class="st">"INSERT INTO _meta (id, version) VALUES (1, 0)"</span>)</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> get_version(engine):</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.<span class="ex">connect</span>() <span class="im">as</span> conn:</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>        row <span class="op">=</span> conn.exec_driver_sql(<span class="st">"SELECT version FROM _meta WHERE id=1"</span>).fetchone()</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> <span class="bu">int</span>(row[<span class="dv">0</span>]) <span class="cf">if</span> row <span class="cf">else</span> <span class="dv">0</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> set_version(engine, version: <span class="bu">int</span>):</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.begin() <span class="im">as</span> conn:</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>        conn.exec_driver_sql(<span class="st">"DELETE FROM _meta WHERE id=1"</span>)</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>        conn.exec_driver_sql(<span class="st">"INSERT INTO _meta (id, version) VALUES (1, ?)"</span>, (<span class="bu">int</span>(version),))</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> execute_sql(engine, sql: <span class="bu">str</span>):</span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> engine.begin() <span class="im">as</span> conn:</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Basic split; feel free to use something more robust for your DB</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> stmt <span class="kw">in</span> [s.strip() <span class="cf">for</span> s <span class="kw">in</span> sql.split(<span class="st">";"</span>) <span class="cf">if</span> s.strip()]: conn.exec_driver_sql(stmt)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</section>
+<section id="sync-or-async-hooks" class="level3">
+<h3 class="anchored" data-anchor-id="sync-or-async-hooks">Sync or async hooks</h3>
+<p>Each function may be sync or async. If any hook returns an awaitable, fastmigrate automatically awaits it so adapters can be built on asyncpg, SQLAlchemy asyncio, psycopg3 async mode, etc.</p>
+</section>
+</section>
 <section id="how-to-use-fastmigrate-from-the-command-line" class="level2">
 <h2 class="anchored" data-anchor-id="how-to-use-fastmigrate-from-the-command-line">How to use fastmigrate from the command line</h2>
 <p>When you run <code>fastmigrate</code>, it will look for migration scripts in <code>./migrations/</code> and a database at <code>./data/database.db</code>. These values can also be overridden by CLI arguments or by values set in the <code>.fastmigrate</code> configuration file, which is in ini format. But you can also provide them as with the command line arguments <code>--db</code> and <code>--migrations</code>.</p>
@@ -280,9 +349,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="contributing">Contributing</h2>
 <p>To contribute to fastmigrate, create an editable install with the <code>dev</code> <a href="https://peps.python.org/pep-0735">dependency group</a> using your favorite package manager.</p>
 <p>For example, with uv (preferred):</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> sync</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> sync</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>or with pip 25.1:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-e</span> . <span class="at">--group</span> dev</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="ex">pip</span> install <span class="at">-e</span> . <span class="at">--group</span> dev</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 
 
 </section>

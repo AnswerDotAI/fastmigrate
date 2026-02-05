@@ -164,6 +164,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text">Enrolling an existing db</span></a>
   </div>
 </li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./custom_backends.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Custom database backends</span></a>
+  </div>
+</li>
     </ul>
     </div>
 </nav>
@@ -223,7 +229,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ol>
 <p>Those two changes you made – adding a new migration script, and updating your application code – should ideally be added to your version control <em>with the same commit</em> since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a moment when you want code which expects version 11 to see a database at version 10. So it is unwise to check in these changes separately.</p>
 <blockquote class="blockquote">
-<p>Note: if you add a .sql migration script, you need have the sqlite3 binary installed on your system.</p>
+<p>Note: fastmigrate runs <code>.sql</code> migrations using Python’s built-in sqlite3. You only need the external <code>sqlite3</code> binary if <strong>your own</strong> <code>.sh</code> migrations invoke it, or if you want to inspect the database from the command line.</p>
 </blockquote>
 </section>
 <section id="how-to-test" class="level3">
