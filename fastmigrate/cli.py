@@ -1,10 +1,14 @@
-"""Command-line interface for fastmigrate."""
+"""Command-line interface for fastmigrate.
 
+This module intentionally avoids any non-stdlib CLI frameworks so fastmigrate
+can run in minimal environments.
+"""
+
+import argparse
 import os
 import sys
 from pathlib import Path
 import sqlite3
-from fastcore.script import call_parse # type:ignore
 import configparser
 from importlib.metadata import version
 
@@ -54,32 +58,42 @@ def _get_config(
         migrations_path = migrations
     return db_path, migrations_path
 
-@call_parse
 def backup_db(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file
+    config_path: Path = DEFAULT_CONFIG, # Path to config file
+    argv: list[str] | None = None,
 ) -> None:
     """Create a backup of the SQLite database.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
-    db_path, _ = _get_config(config_path, db)
+    parser = argparse.ArgumentParser(prog="fastmigrate_backup_db", description=backup_db.__doc__)
+    parser.add_argument("--db", default=db, type=Path)
+    parser.add_argument("--config_path", default=config_path, type=Path)
+    args = parser.parse_args(argv)
+
+    db_path, _ = _get_config(args.config_path, args.db)
     if core.create_db_backup(db_path) is None:
         sys.exit(1)
 
-@call_parse
 def check_version(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
-    config_path: Path = DEFAULT_CONFIG # Path to config file
+    config_path: Path = DEFAULT_CONFIG, # Path to config file
+    argv: list[str] | None = None,
 ) -> None:
     """Show the version of fastmigrate and the SQLite database.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
+    parser = argparse.ArgumentParser(prog="fastmigrate_check_version", description=check_version.__doc__)
+    parser.add_argument("--db", default=db, type=Path)
+    parser.add_argument("--config_path", default=config_path, type=Path)
+    args = parser.parse_args(argv)
+
     print(f"FastMigrate version: {version('fastmigrate')}")
-    db_path, _ = _get_config(config_path, db)
+    db_path, _ = _get_config(args.config_path, args.db)
     if not db_path.exists():
         print(f"Database file does not exist: {db_path}")
         sys.exit(1)
@@ -91,10 +105,10 @@ def check_version(
     return
 
 
-@call_parse
 def create_db(
         db: Path = DEFAULT_DB, # Path to SQLite db file, which may not exist
-        config_path: Path = DEFAULT_CONFIG # Path to config file
+        config_path: Path = DEFAULT_CONFIG, # Path to config file
+        argv: list[str] | None = None,
 ) -> None:
     """Create a new SQLite database, with versioning build-in.
 
@@ -103,7 +117,12 @@ def create_db(
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
-    db_path, _ = _get_config(config_path, db)
+    parser = argparse.ArgumentParser(prog="fastmigrate_create_db", description=create_db.__doc__)
+    parser.add_argument("--db", default=db, type=Path)
+    parser.add_argument("--config_path", default=config_path, type=Path)
+    args = parser.parse_args(argv)
+
+    db_path, _ = _get_config(args.config_path, args.db)
     print(f"Creating database at {db_path}")
     try:
         # Check if file existed before we call create_db
@@ -128,18 +147,24 @@ def create_db(
         print(f"Unexpected error: {e}")
         sys.exit(1)
 
-@call_parse
 def enroll_db(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
-    config_path: Path = DEFAULT_CONFIG # Path to config file
+    config_path: Path = DEFAULT_CONFIG, # Path to config file
+    argv: list[str] | None = None,
 ) -> None:
     """Enroll an existing SQLite database for versioning, and generate a draft initial migration.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
-    db_path, migrations_path = _get_config(config_path, db, migrations)
+    parser = argparse.ArgumentParser(prog="fastmigrate_enroll_db", description=enroll_db.__doc__)
+    parser.add_argument("--db", default=db, type=Path)
+    parser.add_argument("--migrations", default=migrations, type=Path)
+    parser.add_argument("--config_path", default=config_path, type=Path)
+    args = parser.parse_args(argv)
+
+    db_path, migrations_path = _get_config(args.config_path, args.db, args.migrations)
     try:
         db_version = core.get_db_version(db_path)
         print(f"Cannot enroll, since this database is already managed.\nIt is marked as version {db_version}")
@@ -153,18 +178,24 @@ def enroll_db(
     core._set_db_version(db_path,1)
 
 
-@call_parse
 def run_migrations(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
-    config_path: Path = DEFAULT_CONFIG # Path to config file
+    config_path: Path = DEFAULT_CONFIG, # Path to config file
+    argv: list[str] | None = None,
 ) -> None:
     """Run SQLite database migrations.
 
     Note: command line arguments take precedence over values from a
     config file, unless they are equal to default values.
     """
-    db_path, migrations_path = _get_config(config_path, db, migrations)
+    parser = argparse.ArgumentParser(prog="fastmigrate_run_migrations", description=run_migrations.__doc__)
+    parser.add_argument("--db", default=db, type=Path)
+    parser.add_argument("--migrations", default=migrations, type=Path)
+    parser.add_argument("--config_path", default=config_path, type=Path)
+    args = parser.parse_args(argv)
+
+    db_path, migrations_path = _get_config(args.config_path, args.db, args.migrations)
     success = core.run_migrations(db_path, migrations_path, verbose=True)
     if not success:
         sys.exit(1)

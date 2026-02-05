@@ -3,7 +3,14 @@
 
 DB_PATH="$1"
 
-sqlite3 "$DB_PATH" <<EOF
+# Use Python's stdlib sqlite3 module so the tests don't depend on the external
+# sqlite3 CLI being installed.
+python3 - "$DB_PATH" <<'PY'
+import sqlite3
+import sys
+
+db_path = sys.argv[1]
+sql = """
 CREATE TABLE tags (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE
@@ -30,4 +37,10 @@ INSERT INTO post_tags (post_id, tag_id) VALUES (1, 3);
 -- Tag other posts
 INSERT INTO post_tags (post_id, tag_id) VALUES (2, 1);
 INSERT INTO post_tags (post_id, tag_id) VALUES (3, 2);
-EOF
+"""
+
+conn = sqlite3.connect(db_path)
+conn.executescript(sql)
+conn.commit()
+conn.close()
+PY

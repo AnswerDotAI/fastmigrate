@@ -1,5 +1,5 @@
 #!/bin/sh
-# Create comments table and add sample data using a shell script
+# Create comments table and add sample data using a shell script.
 
 DB_PATH="$1"
 if [ -z "$DB_PATH" ]; then
@@ -7,8 +7,14 @@ if [ -z "$DB_PATH" ]; then
   exit 1
 fi
 
-# Create table and add sample data
-sqlite3 "$DB_PATH" <<EOF
+# Use Python's stdlib sqlite3 module so the test suite doesn't depend on the
+# external sqlite3 CLI being installed.
+python3 - "$DB_PATH" <<'PY'
+import sqlite3
+import sys
+
+db_path = sys.argv[1]
+sql = """
 -- Create comments table
 CREATE TABLE comments (
   id INTEGER PRIMARY KEY,
@@ -26,12 +32,12 @@ SELECT p.id, u.id, 'Great first post!'
 FROM posts p
 JOIN users u ON u.username = 'admin'
 LIMIT 1;
-EOF
+"""
 
-# Check execution status
-if [ $? -eq 0 ]; then
-  exit 0
-else
-  echo "Error executing SQL script"
-  exit 1
-fi
+conn = sqlite3.connect(db_path)
+conn.executescript(sql)
+conn.commit()
+conn.close()
+PY
+
+exit $?

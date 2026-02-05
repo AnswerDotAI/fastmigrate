@@ -13,7 +13,9 @@ pip install fastmigrate
 uv add fastmigrate
 ```
 
-To run all the tests, you also need to install the sqlite3 executable on your system.
+Fastmigrate itself does not require the external ``sqlite3`` command-line tool.
+If you choose to write ``.sh`` migrations that invoke ``sqlite3`` yourself, you'll
+need it installed, but ``.sql`` migrations run via Python's built-in sqlite3.
 
 ## How to use fastmigrate in your app
 
@@ -61,6 +63,79 @@ Fastmigrate implements the standard database migration pattern, so these key con
   - trying to run those scripts
 
 When Fastmigrate encounters an error, it stops. It does not attempt to roll back or reverse. Therefore, if you want to ensure your migrations are never left half-completed mid-script, add appropriate transactions inside your sql.
+
+## Using fastmigrate with non-SQLite databases
+
+Fastmigrate is **SQLite-first** by default, but you can make it **database-independent**
+by providing a backend adapter at:
+
+```
+<your migrations dir>/config.py
+```
+
+When this file exists, :func:`fastmigrate.run_migrations` will:
+
+- load this module dynamically
+- call your adapter hooks to:
+  - create the ``_meta`` table (if needed)
+  - read/update the version number
+  - execute ``.sql`` migrations using your database driver
+- still run ``.py`` and ``.sh`` migrations the same way as usual (passing
+  ``str(db)`` as the first positional argument)
+
+### Minimal required functions in ``config.py``
+
+Each hook may be **sync or async**. If a hook returns an awaitable/coroutine,
+fastmigrate will automatically await it.
+
+```python
+def get_connection(db): ...
+def ensure_meta_table(conn): ...
+def get_version(conn) -> int: ...
+def set_version(conn, version: int): ...
+def execute_sql(conn, sql: str): ...
+
+# optional
+def close_connection(conn): ...
+```
+
+### Example: SQLAlchemy adapter (SQLite)
+
+```python
+# migrations/config.py
+from sqlalchemy import create_engine, text
+
+def get_connection(db): return create_engine(f"sqlite+pysqlite:///{db}")
+def close_connection(engine): engine.dispose()
+
+def ensure_meta_table(engine):
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE IF NOT EXISTS _meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)"
+        )
+        row = conn.exec_driver_sql("SELECT version FROM _meta WHERE id=1").fetchone()
+        if row is None: conn.exec_driver_sql("INSERT INTO _meta (id, version) VALUES (1, 0)")
+
+def get_version(engine):
+    with engine.connect() as conn:
+        row = conn.exec_driver_sql("SELECT version FROM _meta WHERE id=1").fetchone()
+        return int(row[0]) if row else 0
+
+def set_version(engine, version: int):
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DELETE FROM _meta WHERE id=1")
+        conn.exec_driver_sql("INSERT INTO _meta (id, version) VALUES (1, ?)", (int(version),))
+
+def execute_sql(engine, sql: str):
+    with engine.begin() as conn:
+        # Basic split; feel free to use something more robust for your DB
+        for stmt in [s.strip() for s in sql.split(";") if s.strip()]: conn.exec_driver_sql(stmt)
+```
+### Sync or async hooks
+
+Each function may be sync or async. If any hook returns an awaitable, fastmigrate
+automatically awaits it so adapters can be built on asyncpg, SQLAlchemy asyncio,
+psycopg3 async mode, etc.
 
 ## How to use fastmigrate from the command line
 

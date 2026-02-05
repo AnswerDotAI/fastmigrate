@@ -1,0 +1,91 @@
+---
+title: "Custom database backends"
+order: 3
+---
+
+Fastmigrate is **SQLite-first** by default.
+
+If you want to use fastmigrate's migration-runner with another database driver
+(asyncpg, psycopg3, SQLAlchemy, DuckDB, etc.), you can provide a tiny backend
+adapter in your migrations directory:
+
+```
+migrations/config.py
+```
+
+When this file exists, `fastmigrate.run_migrations()` will delegate the
+DB-specific operations to it:
+
+- ensure a `_meta` table exists (creating it if missing)
+- get and set the schema version
+- execute `.sql` migration files
+
+`.py` and `.sh` migrations are executed as separate processes as usual, with
+`str(db)` passed as the first positional argument.
+
+## Minimal required functions
+
+Your `migrations/config.py` must define the following functions.
+Each function may be **sync or async**. If a function returns an awaitable,
+fastmigrate automatically awaits it.
+
+```python
+def get_connection(db):
+    """Return any handle you want fastmigrate to pass around (engine, pool, etc)."""
+
+def ensure_meta_table(conn):
+    """Create the _meta table (and an initial version row) if missing."""
+
+def get_version(conn) -> int:
+    """Return the current version from _meta."""
+
+def set_version(conn, version: int):
+    """Persist the schema version in _meta."""
+
+def execute_sql(conn, sql: str):
+    """Execute a SQL migration.
+
+    Return True/None on success; return False or raise on failure.
+    """
+
+# optional
+def close_connection(conn):
+    """Dispose/close the handle returned by get_connection."""
+```
+
+## Example: SQLAlchemy adapter (SQLite)
+
+```python
+from sqlalchemy import create_engine
+
+def get_connection(db):
+    return create_engine(f"sqlite+pysqlite:///{db}")
+
+def close_connection(engine):
+    engine.dispose()
+
+def ensure_meta_table(engine):
+    with engine.begin() as conn:
+        conn.exec_driver_sql(
+            "CREATE TABLE IF NOT EXISTS _meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)"
+        )
+        row = conn.exec_driver_sql("SELECT version FROM _meta WHERE id=1").fetchone()
+        if row is None:
+            conn.exec_driver_sql("INSERT INTO _meta (id, version) VALUES (1, 0)")
+
+def get_version(engine):
+    with engine.connect() as conn:
+        row = conn.exec_driver_sql("SELECT version FROM _meta WHERE id=1").fetchone()
+        return int(row[0]) if row else 0
+
+def set_version(engine, version: int):
+    with engine.begin() as conn:
+        conn.exec_driver_sql("DELETE FROM _meta WHERE id=1")
+        conn.exec_driver_sql("INSERT INTO _meta (id, version) VALUES (1, ?)", (int(version),))
+
+def execute_sql(engine, sql: str):
+    with engine.begin() as conn:
+        # This split is intentionally simple; use a more robust approach if needed.
+        for stmt in [s.strip() for s in sql.split(";") if s.strip()]:
+            conn.exec_driver_sql(stmt)
+```
