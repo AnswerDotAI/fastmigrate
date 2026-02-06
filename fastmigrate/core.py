@@ -630,6 +630,9 @@ def run_migrations(
     Returns True if all migrations succeed, False otherwise.
     """
     migrations_dir = Path(migrations_dir)
+    if not migrations_dir.exists():
+        print(f"Error: Migrations directory does not exist: {migrations_dir}", file=stderr)
+        return False
 
     # Custom backend mode via migrations/config.py
     try:
