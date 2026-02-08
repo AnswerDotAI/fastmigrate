@@ -430,7 +430,7 @@ async def _run_migrations_with_backend_async( db: Any, migrations_dir: Path, bac
     """
 
     migrations_dir = Path(migrations_dir)
-    _logger.debug(f"mode=custom_backend db={db!s} migrations_dir={migrations_dir}")
+    _logger.debug(f"mode=custom_backend migrations_dir={migrations_dir}")
 
     stats = {"applied": 0, "failed": 0}
 
