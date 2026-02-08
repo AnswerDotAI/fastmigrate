@@ -5,6 +5,7 @@ __version__ = "0.5.0"
 
 from fastmigrate.core import (
     run_migrations,
+    setup_logging,
     create_db,
     ensure_versioned_db,
     get_db_version,
@@ -22,8 +23,7 @@ except Exception:  # pragma: no cover
             "fastmigrate.recreate_table requires the optional 'apswutils' dependency"
         )
 
-__all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup", "recreate_table",
+__all__ = ["run_migrations", "setup_logging", "create_db", "get_db_version", "create_db_backup", "recreate_table",
            # deprecated
            "ensure_versioned_db",
            "create_database_backup"]
-

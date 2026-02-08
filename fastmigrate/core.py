@@ -13,6 +13,7 @@ import asyncio
 import hashlib
 import importlib.util
 import inspect
+import logging
 import os
 import re
 import sqlite3
@@ -31,9 +32,25 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 
 __all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
-           # deprecated
+           "setup_logging",
            "ensure_versioned_db",
            "create_database_backup"]
+
+_logger = logging.getLogger("fastmigrate")
+_logger.addHandler(logging.NullHandler())
+
+def setup_logging(verbose: bool=False) -> None:
+    "Configure standard logging for fastmigrate usage."
+    logging.basicConfig(level=logging.DEBUG if verbose else logging.WARNING, format="%(levelname)s: %(message)s")
+
+def _debug_db_exists(db: Any) -> bool | str:
+    "Best-effort DB presence check for debug logs."
+    if isinstance(db, Path): return db.exists()
+    if isinstance(db, str):
+        s = db.strip()
+        if "://" in s or s == ":memory:": return "unknown"
+        return Path(s).exists()
+    return "unknown"
 
 
 @dataclass(frozen=True)
@@ -56,8 +73,6 @@ def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
     if not config_path.exists():
         return None
 
-    # Use a stable-ish but unique module name to avoid collisions when tests
-    # create multiple temporary migration dirs.
     digest = hashlib.sha256(str(config_path).encode("utf-8")).hexdigest()[:12]
     module_name = f"fastmigrate_user_config_{digest}"
 
@@ -91,7 +106,6 @@ def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
         close_connection=getattr(module, "close_connection", None),
     )
 
-    # Basic validation: required hooks must be callable.
     for name in required:
         if not callable(getattr(backend, name)):
             raise TypeError(f"config.py function '{name}' is not callable")
@@ -119,7 +133,6 @@ def _run_async_blocking(coro: Awaitable[Any]) -> Any:
     except RuntimeError:
         return asyncio.run(coro)
 
-    # Running loop detected.
     result_box: dict[str, Any] = {}
     err_box: dict[str, BaseException] = {}
 
@@ -184,14 +197,12 @@ def _ensure_meta_table(db_path: Path) -> None:
 
     """
     db_path = Path(db_path)
-    # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
 
     conn = None
     try:
         conn = sqlite3.connect(db_path)
-        # Check if _meta table exists
         cursor = conn.execute(
             """
             SELECT name, sql FROM sqlite_master
@@ -201,7 +212,6 @@ def _ensure_meta_table(db_path: Path) -> None:
         row = cursor.fetchone()
 
         if row is None:
-            # Table doesn't exist, create it with version 0
             try:
                 with conn:
                     conn.execute(
@@ -233,7 +243,6 @@ def get_db_version(db_path: Path) -> int:
         sqlite3.Error: If unable to read the db version because it is not managed
     """
     db_path = Path(db_path)
-    # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
 
@@ -269,7 +278,6 @@ def _set_db_version(db_path: Path, version: int) -> None:
         sqlite3.Error: If unable to write to the database
     """
     db_path = Path(db_path)
-    # First check if the file exists
     if not db_path.exists():
         raise FileNotFoundError(f"Database file does not exist: {db_path}")
 
@@ -338,33 +346,20 @@ def execute_sql_script(db_path: Path, script_path: Path) -> bool:
     """
     db_path = Path(db_path)
     script_path = Path(script_path)
-    # Connect directly to the database
     conn = None
     try:
         conn = sqlite3.connect(db_path)
-
-        # Read script content
         script_content = script_path.read_text()
-
-        # Execute the script
         conn.executescript(script_content)
         return True
 
     except sqlite3.Error as e:
-        # SQL error occurred
-        print(f"Error executing SQL script {script_path}:", file=stderr)
-        print(f"  {e}", file=stderr)
-        return False
-
-    except Exception as e:
-        # Handle other errors (file not found, etc.)
         print(f"Error executing SQL script {script_path}:", file=stderr)
         print(f"  {e}", file=stderr)
         return False
 
     finally:
-        if conn:
-            conn.close()
+        if conn: conn.close()
 
 
 def execute_python_script(db: Any, script_path: Path) -> bool:
@@ -428,16 +423,13 @@ def create_db_backup(db_path: Path) -> Path | None:
         Path: Path to the backup file, or None if the backup failed.
     """
     db_path = Path(db_path)
-    # Only proceed if the database exists
     if not db_path.exists():
         print(f"Warning: Database file does not exist: {db_path}")
         return None
 
-    # Create a timestamped backup filename
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_path = Path(f"{db_path}.{timestamp}.backup")
 
-    # Check if the backup file already exists
     if backup_path.exists():
         print(f"Error: Backup file already exists: {backup_path}", file=stderr)
         return None
@@ -445,11 +437,9 @@ def create_db_backup(db_path: Path) -> Path | None:
     conn = None
     backup_conn = None
     try:
-        # Connect to the databases
         conn = sqlite3.connect(db_path)
         backup_conn = sqlite3.connect(backup_path)
 
-        # Perform the backup
         with backup_conn:
             conn.backup(backup_conn)
 
@@ -460,7 +450,6 @@ def create_db_backup(db_path: Path) -> Path | None:
         return backup_path
     except Exception as e:
         print(f"Error during backup: {e}")
-        # Attempt to remove potentially incomplete backup file
         if backup_path.exists():
             try:
                 backup_path.unlink() # remove the file
@@ -469,7 +458,6 @@ def create_db_backup(db_path: Path) -> Path | None:
                 print(f"Error removing incomplete backup file: {remove_err}", file=stderr)
         return None
     finally:
-        # this runs before return `backup_path` or `return None` in the try block
         if conn:
             conn.close()
         if backup_conn:
@@ -490,15 +478,10 @@ def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     script_path = Path(script_path)
     ext = os.path.splitext(script_path)[1].lower()
 
-    if ext == ".sql":
-        return execute_sql_script(db_path, script_path)
-    elif ext == ".py":
-        return execute_python_script(db_path, script_path)
-    elif ext == ".sh":
-        return execute_shell_script(db_path, script_path)
-    else:
-        print(f"Unsupported script type: {script_path}", file=stderr)
-        return False
+    if ext == ".sql": return execute_sql_script(db_path, script_path)
+    elif ext == ".py": return execute_python_script(db_path, script_path)
+    elif ext == ".sh": return execute_shell_script(db_path, script_path)
+    else: return print(f"Unsupported script type: {script_path}", file=stderr)
 
 
 async def _run_migrations_with_backend_async(
@@ -514,37 +497,31 @@ async def _run_migrations_with_backend_async(
     """
 
     migrations_dir = Path(migrations_dir)
+    _logger.debug(f"mode=custom_backend db={db!s} migrations_dir={migrations_dir}")
 
-    # Keep track of migration statistics
     stats = {"applied": 0, "failed": 0}
 
-    # Get all migration scripts
-    try:
-        migration_scripts = get_migration_scripts(migrations_dir)
-    except ValueError as e:
-        print(f"Error: {e}", file=stderr)
-        return False
+    try: migration_scripts = get_migration_scripts(migrations_dir)
+    except ValueError as e: return print(f"Error: {e}", file=stderr)
+    _logger.debug(f"migration_versions={sorted(migration_scripts)}")
 
-    # Acquire connection/handle (may be None, engine, pool, etc)
     conn = await _maybe_await(backend.get_connection(db))
 
     try:
-        # Ensure _meta exists
         await _maybe_await(backend.ensure_meta_table(conn))
 
-        # Current version
         current_version = int(await _maybe_await(backend.get_version(conn)))
+        _logger.debug(f"current_version={current_version}")
 
-        # Find pending migrations
         pending_migrations = {
             version: path
             for version, path in migration_scripts.items()
             if version > current_version
         }
+        _logger.debug(f"pending_versions={sorted(pending_migrations)}")
 
         if not pending_migrations:
-            if verbose:
-                print(f"Database is up to date (version {current_version})")
+            _logger.debug(f"result=up_to_date current_version={current_version}")
             return True
 
         sorted_versions = sorted(pending_migrations.keys())
@@ -552,9 +529,7 @@ async def _run_migrations_with_backend_async(
         for version in sorted_versions:
             script_path = Path(pending_migrations[version])
             script_name = script_path.name
-
-            if verbose:
-                print(f"Applying migration {version}: {script_name}")
+            _logger.debug(f"apply version={version} script={script_name}")
 
             ext = os.path.splitext(script_name)[1].lower()
             success: bool
@@ -583,34 +558,21 @@ async def _run_migrations_with_backend_async(
 
             stats["applied"] += 1
 
-            # Update version
             await _maybe_await(backend.set_version(conn, int(version)))
-            if verbose:
-                print(f"✓ Database updated to version {version}")
+            _logger.debug(f"updated_version={version}")
 
-        if stats["applied"] > 0 and verbose:
-            print("\nMigration Complete")
-            print(f"  • {stats['applied']} migrations applied")
-            print(f"  • Database now at version {sorted_versions[-1]}")
+        _logger.debug(f"result=success applied={stats['applied']} final_version={sorted_versions[-1]}")
 
         return True
 
-    except Exception as e:
-        print(f"Error: {e}", file=stderr)
-        return False
     finally:
-        if backend.close_connection is not None:
-            try:
-                await _maybe_await(backend.close_connection(conn))
-            except Exception:
-                # Best-effort cleanup; never mask migration errors.
-                pass
+        if backend.close_connection is not None: await _maybe_await(backend.close_connection(conn))
 
 
 def run_migrations(
     db_path: Any,
     migrations_dir: Path,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> bool:
     """Run all pending migrations.
 
@@ -625,49 +587,39 @@ def run_migrations(
             using a custom backend adapter, this can be anything (DSN string,
             engine, pool, etc) as long as your adapter understands it.
         migrations_dir: Path to the directory containing migration scripts.
-        verbose: If True, print detailed progress messages.
+        verbose: If True, configure debug logging (same as setup_logging(True)).
 
     Returns True if all migrations succeed, False otherwise.
     """
+    if verbose: setup_logging(True)
     migrations_dir = Path(migrations_dir)
-
-    # Custom backend mode via migrations/config.py
-    try:
-        backend = _load_user_backend(migrations_dir)
-    except Exception as e:
-        print(f"Error loading migrations/config.py: {e}", file=stderr)
-        return False
+    backend = _load_user_backend(migrations_dir)
     if backend is not None:
-        try:
-            return bool(
-                _run_async_blocking(
-                    _run_migrations_with_backend_async(db_path, migrations_dir, backend, verbose)
-                )
+        _logger.debug(f"db_exists={_debug_db_exists(db_path)}")
+        return bool(
+            _run_async_blocking(
+                _run_migrations_with_backend_async(db_path, migrations_dir, backend, verbose)
             )
-        except Exception as e:
-            print(f"Error: {e}", file=stderr)
-            return False
+        )
 
-    # SQLite-first default mode
     db_path = Path(db_path)
-    # Keep track of migration statistics
+    _logger.debug(f"mode=sqlite db={db_path} migrations_dir={migrations_dir}")
     stats = {
         "applied": 0,
         "failed": 0
     }
 
-    # Check if database file exists
-    if not db_path.exists():
+    db_exists = db_path.exists()
+    _logger.debug(f"db_exists={db_exists}")
+    if not db_exists:
         print(f"Error: Database file does not exist: {db_path}", file=stderr)
         print("The database file must exist before running migrations.",file=stderr)
         return False
 
     try:
-        # Ensure this is a managed db
-        try:
-            create_db(db_path)
-        except sqlite3.Error as e:
-            print(f"""Error: Cannot migrate the db at {db_path}.
+        create_db(db_path)
+    except sqlite3.Error as e:
+        print(f"""Error: Cannot migrate the db at {db_path}.
 
 This is because it is not managed by fastmigrate. Please do one of the following:
 
@@ -676,76 +628,49 @@ This is because it is not managed by fastmigrate. Please do one of the following
 
 2. Enroll your existing database, as described in
 https://answerdotai.github.io/fastmigrate/enrolling.html""",file=stderr)
-            return False
+        return False
 
-        # Get current version
-        current_version = get_db_version(db_path)
+    current_version = get_db_version(db_path)
+    _logger.debug(f"current_version={current_version}")
+    migration_scripts = get_migration_scripts(migrations_dir)
 
-        # Get all migration scripts
-        try:
-            migration_scripts = get_migration_scripts(migrations_dir)
-        except ValueError as e:
-            print(f"Error: {e}", file=stderr)
-            return False
+    _logger.debug(f"migration_versions={sorted(migration_scripts)}")
 
-        # Find pending migrations
-        pending_migrations = {
-            version: path
-            for version, path in migration_scripts.items()
-            if version > current_version
-        }
+    pending_migrations = {
+        version: path
+        for version, path in migration_scripts.items()
+        if version > current_version
+    }
+    _logger.debug(f"pending_versions={sorted(pending_migrations)}")
 
-        if not pending_migrations:
-            if verbose:
-                print(f"Database is up to date (version {current_version})")
-            return True
-
-        # Sort migrations by version
-        sorted_versions = sorted(pending_migrations.keys())
-
-        # Execute migrations
-        for version in sorted_versions:
-            script_path = pending_migrations[version]
-            script_name = script_path.name
-
-            if verbose:
-                print(f"Applying migration {version}: {script_name}")
-
-            # Each script will open its own connection
-
-            # Execute the migration script
-            success = execute_migration_script(db_path, script_path)
-
-            if not success:
-                # Show summary of failure - always show errors regardless of verbose flag
-                stats["failed"] += 1
-                print(f"""Migration failed: {script_path}
-  • {stats['applied']} migrations applied
-  • {stats['failed']} migrations failed""", file=stderr)
-
-                return False
-
-            stats["applied"] += 1
-
-            # Update version
-            _set_db_version(db_path, version)
-            if verbose:
-                print(f"✓ Database updated to version {version}")
-
-        # Show summary of successful run
-        if stats["applied"] > 0 and verbose:
-            print("\nMigration Complete")
-            print(f"  • {stats['applied']} migrations applied")
-            print(f"  • Database now at version {sorted_versions[-1]}")
-
+    if not pending_migrations:
+        _logger.debug(f"result=up_to_date current_version={current_version}")
         return True
 
-    except sqlite3.Error as e:
-        print(f"Database error: {e}", file=stderr)
-        return False
-    except Exception as e:
-        print(f"Error: {e}", file=stderr)
-        return False
+    sorted_versions = sorted(pending_migrations.keys())
+
+    for version in sorted_versions:
+        script_path = pending_migrations[version]
+        script_name = script_path.name
+        _logger.debug(f"apply version={version} script={script_name}")
+
+
+        success = execute_migration_script(db_path, script_path)
+
+        if not success:
+            stats["failed"] += 1
+            print(f"""Migration failed: {script_path}
+  • {stats['applied']} migrations applied
+  • {stats['failed']} migrations failed""", file=stderr)
+            return False
+
+        stats["applied"] += 1
+
+        _set_db_version(db_path, version)
+        _logger.debug(f"updated_version={version}")
+
+    _logger.debug(f"result=success applied={stats['applied']} final_version={sorted_versions[-1]}")
+    return True
 
 def get_db_schema(db_path: Path) -> str:
     """Get the SQL schema of a SQLite database file.
@@ -765,38 +690,17 @@ def get_db_schema(db_path: Path) -> str:
     """
 
     db_path = Path(db_path)
-    if not db_path.exists():
-        raise FileNotFoundError(f"Database does not exist: {db_path}")
+    if not db_path.exists(): raise FileNotFoundError(f"Database does not exist: {db_path}")
 
-    # Preferred implementation: use APSW's `.schema` output if available.
-    # APSW is an optional dependency; if it's not installed we fall back to
-    # `sqlite3` introspection.
-    try:
-        from apsw import Connection  # type: ignore
-        from apsw.shell import Shell  # type: ignore
+    from apsw import Connection
+    from apsw.shell import Shell
 
-        conn = Connection(str(db_path))
-        out = StringIO()
-        shell = Shell(stdout=out, db=conn)
-        shell.process_command(".schema")
-        sql = out.getvalue()
-    except Exception:
-        # Fallback: extract CREATE statements from sqlite_master.
-        conn = sqlite3.connect(db_path)
-        try:
-            rows = conn.execute(
-                """
-                SELECT sql FROM sqlite_master
-                WHERE sql IS NOT NULL AND type IN ('table', 'index', 'trigger', 'view')
-                ORDER BY type, name
-                """
-            ).fetchall()
-            sql = "\n\n".join(r[0].rstrip(";") + ";" for r in rows if r and r[0])
-        finally:
-            conn.close()
+    conn = Connection(str(db_path))
+    out = StringIO()
+    shell = Shell(stdout=out, db=conn)
+    shell.process_command(".schema")
+    sql = out.getvalue()
 
-    if "CREATE TABLE" in sql:
-        sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
-    if "CREATE INDEX" in sql:
-        sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")
+    if "CREATE TABLE" in sql: sql = sql.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS")
+    if "CREATE INDEX" in sql: sql = sql.replace("CREATE INDEX", "CREATE INDEX IF NOT EXISTS")
     return sql

@@ -22,7 +22,7 @@ need it installed, but ``.sql`` migrations run via Python's built-in sqlite3.
 Once you have added a `migrations/` directory to your app, you would typically use fastmigrate in your application code like so:
 
 ```python
-from fastmigrate import create_db, run_migrations
+from fastmigrate import create_db, run_migrations, setup_logging
 
 # At application startup:
 db_path = "path/to/database.db"
@@ -31,8 +31,11 @@ migrations_dir = "path/to/migrations"
 # Create/verify there is a versioned database
 current_version = create_db(db_path)
 
+# Optional: enable debug logs from fastmigrate
+setup_logging(verbose=True)
+
 # Apply any pending migrations
-if not run_migrations(db_path, migrations_dir, verbose=False):
+if not run_migrations(db_path, migrations_dir):
     print("Database migration failed!")
 ```
 
@@ -163,9 +166,9 @@ Here are some commands:
    
 4. **Run migrations**:
    ```
-   fastmigrate_run_migrations --db path/to/data.db
+   fastmigrate_run_migrations --db path/to/data.db --verbose
    ```
-   Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`
+   Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling `fastmigrate.run_migrations()`. Use `--verbose` to enable debug-level logs.
 
 5. **Enroll an existing db**:
    ```
@@ -205,4 +208,3 @@ or with pip 25.1:
 ```bash
 pip install -e . --group dev
 ```
-

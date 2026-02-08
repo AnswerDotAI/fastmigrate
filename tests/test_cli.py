@@ -516,4 +516,3 @@ def test_cli_with_testsuite_a(tmp_path):
         assert cursor.fetchone() is not None
     
     conn.close()
-

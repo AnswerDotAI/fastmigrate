@@ -182,6 +182,7 @@ def run_migrations(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
     migrations: Path = DEFAULT_MIGRATIONS, # Path to the migrations directory
     config_path: Path = DEFAULT_CONFIG, # Path to config file
+    verbose: bool = False, # Enable debug logging
     argv: list[str] | None = None,
 ) -> None:
     """Run SQLite database migrations.
@@ -193,10 +194,11 @@ def run_migrations(
     parser.add_argument("--db", default=db, type=Path)
     parser.add_argument("--migrations", default=migrations, type=Path)
     parser.add_argument("--config_path", default=config_path, type=Path)
+    parser.add_argument("-v", "--verbose", action="store_true", default=verbose)
     args = parser.parse_args(argv)
 
+    core.setup_logging(args.verbose)
     db_path, migrations_path = _get_config(args.config_path, args.db, args.migrations)
-    success = core.run_migrations(db_path, migrations_path, verbose=True)
+    success = core.run_migrations(db_path, migrations_path)
     if not success:
         sys.exit(1)
-
