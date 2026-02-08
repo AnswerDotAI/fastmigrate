@@ -2,13 +2,11 @@
 
 ## 0.5.0
 
-- Add support for database-independent migrations via ``migrations/config.py``
-  backend adapters (sync or async).
-- ``run_migrations`` now delegates SQL execution and version bookkeeping to the
-  adapter when present.
-- Remove dependency on ``fastcore`` for the CLI (stdlib ``argparse``).
-- Make APSW/APSWUtils functionality optional at import time (only required for
-  sqlite-specific helpers).
+## Enhancements
+
+- Add support for database-independent migrations via ``migrations/config.py`` backend adapters (sync or async).
+- ``run_migrations`` now delegates SQL execution and version bookkeeping to the adapter when present.
+
 
 ## 0.4.1
 
