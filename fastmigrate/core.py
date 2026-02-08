@@ -31,10 +31,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 
 
-__all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup",
-           "setup_logging",
-           "ensure_versioned_db",
-           "create_database_backup"]
+__all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup", "setup_logging", "ensure_versioned_db", "create_database_backup"]
 
 _logger = logging.getLogger("fastmigrate")
 _logger.addHandler(logging.NullHandler())
@@ -55,7 +52,7 @@ def _debug_db_exists(db: Any) -> bool | str:
 
 @dataclass(frozen=True)
 class _UserBackend:
-    """Backend adapter loaded from ``migrations/config.py``."""
+    "Backend adapter loaded from ``migrations/config.py``."
 
     module: ModuleType
     get_connection: Callable[[Any], Any]
@@ -63,11 +60,11 @@ class _UserBackend:
     get_version: Callable[[Any], Any]
     set_version: Callable[[Any, int], Any]
     execute_sql: Callable[[Any, str], Any]
-    close_connection: Optional[Callable[[Any], Any]] = None
+    close_connection: Optional[Callable] = None
 
 
 def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
-    """Load a user backend adapter from ``migrations_dir/config.py`` if present."""
+    "Load a user backend adapter from ``migrations_dir/config.py`` if present."
     migrations_dir = Path(migrations_dir)
     assert migrations_dir.exists()
     config_path = migrations_dir / "config.py"
@@ -77,30 +74,19 @@ def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
     module_name = f"fastmigrate_user_config_{digest}"
 
     spec = importlib.util.spec_from_file_location(module_name, config_path)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Unable to import config.py from {config_path}")
+    if spec is None or spec.loader is None: raise ImportError(f"Unable to import config.py from {config_path}")
 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
     required = [ "get_connection", "ensure_meta_table", "get_version", "set_version", "execute_sql", ]
     missing = [name for name in required if not hasattr(module, name)]
-    if missing:
-        raise AttributeError( f"config.py is missing required function(s): {', '.join(missing)}")
+    if missing: raise AttributeError( f"config.py is missing required function(s): {', '.join(missing)}")
 
-    backend = _UserBackend(
-        module=module,
-        get_connection=getattr(module, "get_connection"),
-        ensure_meta_table=getattr(module, "ensure_meta_table"),
-        get_version=getattr(module, "get_version"),
-        set_version=getattr(module, "set_version"),
-        execute_sql=getattr(module, "execute_sql"),
-        close_connection=getattr(module, "close_connection", None),
-    )
+    backend = _UserBackend( module=module, get_connection=getattr(module, "get_connection"), ensure_meta_table=getattr(module, "ensure_meta_table"), get_version=getattr(module, "get_version"), set_version=getattr(module, "set_version"), execute_sql=getattr(module, "execute_sql"), close_connection=getattr(module, "close_connection", None),)
 
     for name in required:
-        if not callable(getattr(backend, name)):
-            raise TypeError(f"config.py function '{name}' is not callable")
+        if not callable(getattr(backend, name)): raise TypeError(f"config.py function '{name}' is not callable")
     if backend.close_connection is not None and not callable(backend.close_connection):
         raise TypeError("config.py function 'close_connection' is not callable")
 
@@ -108,9 +94,8 @@ def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
 
 
 async def _maybe_await(value: Any) -> Any:
-    """Await *value* if it is awaitable, otherwise return it unchanged."""
-    if inspect.isawaitable(value):
-        return await value
+    "Await *value* if it is awaitable, otherwise return it unchanged."
+    if inspect.isawaitable(value): return await value
     return value
 
 
@@ -123,8 +108,8 @@ def _run_async_blocking(coro: Awaitable[Any]) -> Any:
     try: asyncio.get_running_loop()
     except RuntimeError: return asyncio.run(coro)
 
-    result_box: dict[str, Any] = {}
-    err_box: dict[str, BaseException] = {}
+    result_box = {}
+    err_box = {}
 
     def _runner() -> None:
         try: result_box["result"] = asyncio.run(coro)
@@ -158,9 +143,7 @@ def create_db(db_path:Path) -> int:
 
 def ensure_versioned_db(db_path:Path) -> int:
     "See create_db"
-    warnings.warn("ensure_versioned_db is deprecated, as it has been renamed to create_db, which is functionally identical",
-                 DeprecationWarning,
-                  stacklevel=2)
+    warnings.warn("ensure_versioned_db is deprecated, as it has been renamed to create_db, which is functionally identical", DeprecationWarning, stacklevel=2)
     return create_db(db_path)
 
 def _ensure_meta_table(db_path: Path) -> None:
@@ -183,8 +166,7 @@ def _ensure_meta_table(db_path: Path) -> None:
 
     """
     db_path = Path(db_path)
-    if not db_path.exists():
-        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    if not db_path.exists(): raise FileNotFoundError(f"Database file does not exist: {db_path}")
 
     conn = None
     try:
@@ -229,24 +211,19 @@ def get_db_version(db_path: Path) -> int:
         sqlite3.Error: If unable to read the db version because it is not managed
     """
     db_path = Path(db_path)
-    if not db_path.exists():
-        raise FileNotFoundError(f"Database file does not exist: {db_path}")
+    if not db_path.exists(): raise FileNotFoundError(f"Database file does not exist: {db_path}")
 
     conn = None
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.execute("SELECT version FROM _meta WHERE id = 1")
         result = cursor.fetchone()
-        if result is None:
-            raise sqlite3.Error("No version found in _meta table")
+        if result is None: raise sqlite3.Error("No version found in _meta table")
         return int(result[0])
-    except sqlite3.OperationalError:
-        raise sqlite3.Error("_meta table does not exist")
-    except sqlite3.Error as e:
-        raise sqlite3.Error(f"Failed to get database version: {e}")
+    except sqlite3.OperationalError: raise sqlite3.Error("_meta table does not exist")
+    except sqlite3.Error as e: raise sqlite3.Error(f"Failed to get database version: {e}")
     finally:
-        if conn:
-            conn.close()
+        if conn: conn.close()
 
 
 def _set_db_version(db_path: Path, version: int) -> None:
@@ -264,9 +241,7 @@ def _set_db_version(db_path: Path, version: int) -> None:
         sqlite3.Error: If unable to write to the database
     """
     db_path = Path(db_path)
-    if not db_path.exists():
-        raise FileNotFoundError(f"Database file does not exist: {db_path}")
-
+    if not db_path.exists(): raise FileNotFoundError(f"Database file does not exist: {db_path}") 
     conn = None
     try:
         conn = sqlite3.connect(db_path)
@@ -279,34 +254,26 @@ def _set_db_version(db_path: Path, version: int) -> None:
                     """,
                     (version,)
                 )
-        except sqlite3.Error as e:
-            raise sqlite3.Error(f"Failed to set version: {e}")
-    except sqlite3.Error as e:
-        raise sqlite3.Error(f"Failed to access database: {e}")
+        except sqlite3.Error as e: raise sqlite3.Error(f"Failed to set version: {e}")
+    except sqlite3.Error as e: raise sqlite3.Error(f"Failed to access database: {e}")
     finally:
-        if conn:
-            conn.close()
-
+        if conn: conn.close()
 
 def extract_version_from_filename(filename: str) -> Optional[int]:
-    """Extract the version number from a migration script filename."""
+    "Extract the version number from a migration script filename."
     filename = str(filename)
     match = re.match(r"^(\d{4})-.*\.(py|sql|sh)$", filename)
-    if match:
-        return int(match.group(1))
+    if match: return int(match.group(1))
     return None
-
 
 def get_migration_scripts(migrations_dir: Path) -> Dict[int, Path]:
     """Get all valid migration scripts from the migrations directory.
 
-    Returns a dictionary mapping version numbers to file paths.
-    Raises ValueError if two scripts have the same version number.
+    Returns a dictionary mapping version numbers to file paths.  Raises ValueError if two scripts have the same version number.
     """
     migrations_dir = Path(migrations_dir)
-    migration_scripts: Dict[int, Path] = {}
-    if not migrations_dir.exists():
-        return migration_scripts
+    migration_scripts = {}
+    if not migrations_dir.exists(): return migration_scripts
 
     for file_path in [x for x in migrations_dir.iterdir() if x.is_file()]:
         version = extract_version_from_filename(file_path.name)
@@ -359,11 +326,7 @@ def execute_python_script(db: Any, script_path: Path) -> bool:
     db_arg = str(db)
     script_path = Path(script_path)
     try:
-        subprocess.run(
-            [sys.executable, script_path, db_arg],
-            capture_output=True,
-            check=True,
-        )
+        subprocess.run( [sys.executable, script_path, db_arg], capture_output=True, check=True,)
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error executing Python script {script_path}:", file=stderr)
@@ -383,11 +346,7 @@ def execute_shell_script(db: Any, script_path: Path) -> bool:
     db_arg = str(db)
     script_path = Path(script_path)
     try:
-        subprocess.run(
-            ["sh", script_path, db_arg],
-            capture_output=True,
-            check=True,
-        )
+        subprocess.run( ["sh", script_path, db_arg], capture_output=True, check=True,)
         return True
     except subprocess.CalledProcessError as e:
         print(f"Error executing shell script {script_path}:", file=stderr)
@@ -426,11 +385,9 @@ def create_db_backup(db_path: Path) -> Path | None:
         conn = sqlite3.connect(db_path)
         backup_conn = sqlite3.connect(backup_path)
 
-        with backup_conn:
-            conn.backup(backup_conn)
+        with backup_conn: conn.backup(backup_conn)
 
-        if not backup_path.exists():
-            raise Exception("Backup file was not created")
+        if not backup_path.exists(): raise Exception("Backup file was not created")
 
         print(f"Database backup created: {backup_path}")
         return backup_path
@@ -440,26 +397,21 @@ def create_db_backup(db_path: Path) -> Path | None:
             try:
                 backup_path.unlink()
                 print(f"Removed incomplete backup file: {backup_path}")
-            except OSError as remove_err:
-                print(f"Error removing incomplete backup file: {remove_err}", file=stderr)
+            except OSError as remove_err: print(f"Error removing incomplete backup file: {remove_err}", file=stderr)
         return None
     finally:
-        if conn:
-            conn.close()
-        if backup_conn:
-            backup_conn.close()
+        if conn: conn.close()
+        if backup_conn: backup_conn.close()
 
 
 def create_database_backup(db_path:Path) -> Path | None:
     "See create_database_backup"
-    warnings.warn("create_database_backup is deprecated, as it has been renamed to create_db_backup, which is functionally identical",
-                 DeprecationWarning,
-                  stacklevel=2)
+    warnings.warn("create_database_backup is deprecated, as it has been renamed to create_db_backup, which is functionally identical", DeprecationWarning, stacklevel=2)
     return create_db_backup(db_path)
 
 
 def execute_migration_script(db_path: Path, script_path: Path) -> bool:
-    """Execute a migration script based on its file extension."""
+    "Execute a migration script based on its file extension."
     db_path = Path(db_path)
     script_path = Path(script_path)
     ext = os.path.splitext(script_path)[1].lower()
@@ -470,12 +422,7 @@ def execute_migration_script(db_path: Path, script_path: Path) -> bool:
     else: return print(f"Unsupported script type: {script_path}", file=stderr)
 
 
-async def _run_migrations_with_backend_async(
-    db: Any,
-    migrations_dir: Path,
-    backend: _UserBackend,
-    verbose: bool = False,
-) -> bool:
+async def _run_migrations_with_backend_async( db: Any, migrations_dir: Path, backend: _UserBackend, verbose: bool = False,) -> bool:
     """Run migrations using a user-provided backend adapter.
 
     This supports both sync and async hooks. All hooks are executed within a
@@ -499,11 +446,7 @@ async def _run_migrations_with_backend_async(
         current_version = int(await _maybe_await(backend.get_version(conn)))
         _logger.debug(f"current_version={current_version}")
 
-        pending_migrations = {
-            version: path
-            for version, path in migration_scripts.items()
-            if version > current_version
-        }
+        pending_migrations = { version: path for version, path in migration_scripts.items() if version > current_version }
         _logger.debug(f"pending_versions={sorted(pending_migrations)}")
 
         if not pending_migrations:
@@ -518,16 +461,13 @@ async def _run_migrations_with_backend_async(
             _logger.debug(f"apply version={version} script={script_name}")
 
             ext = os.path.splitext(script_name)[1].lower()
-            success: bool
 
             if ext == ".sql":
                 sql = script_path.read_text()
                 result = await _maybe_await(backend.execute_sql(conn, sql))
                 success = True if result is None else bool(result)
-            elif ext == ".py":
-                success = execute_python_script(db, script_path)
-            elif ext == ".sh":
-                success = execute_shell_script(db, script_path)
+            elif ext == ".py": success = execute_python_script(db, script_path)
+            elif ext == ".sh": success = execute_shell_script(db, script_path)
             else:
                 print(f"Unsupported script type: {script_path}", file=stderr)
                 success = False
@@ -555,11 +495,7 @@ async def _run_migrations_with_backend_async(
         if backend.close_connection is not None: await _maybe_await(backend.close_connection(conn))
 
 
-def run_migrations(
-    db_path: Any,
-    migrations_dir: Path,
-    verbose: bool = False,
-) -> bool:
+def run_migrations( db_path: Any, migrations_dir: Path, verbose: bool = False,) -> bool:
     """Run all pending migrations.
 
     By default, fastmigrate operates on SQLite database files.
@@ -582,18 +518,11 @@ def run_migrations(
     backend = _load_user_backend(migrations_dir)
     if backend is not None:
         _logger.debug(f"db_exists={_debug_db_exists(db_path)}")
-        return bool(
-            _run_async_blocking(
-                _run_migrations_with_backend_async(db_path, migrations_dir, backend, verbose)
-            )
-        )
+        return bool( _run_async_blocking( _run_migrations_with_backend_async(db_path, migrations_dir, backend, verbose)))
 
     db_path = Path(db_path)
     _logger.debug(f"mode=sqlite db={db_path} migrations_dir={migrations_dir}")
-    stats = {
-        "applied": 0,
-        "failed": 0
-    }
+    stats = { "applied": 0, "failed": 0 }
 
     db_exists = db_path.exists()
     _logger.debug(f"db_exists={db_exists}")
@@ -602,8 +531,7 @@ def run_migrations(
         print("The database file must exist before running migrations.",file=stderr)
         return False
 
-    try:
-        create_db(db_path)
+    try: create_db(db_path)
     except sqlite3.Error as e:
         print(f"""Error: Cannot migrate the db at {db_path}.
 
@@ -622,11 +550,7 @@ https://answerdotai.github.io/fastmigrate/enrolling.html""",file=stderr)
 
     _logger.debug(f"migration_versions={sorted(migration_scripts)}")
 
-    pending_migrations = {
-        version: path
-        for version, path in migration_scripts.items()
-        if version > current_version
-    }
+    pending_migrations = { version: path for version, path in migration_scripts.items() if version > current_version }
     _logger.debug(f"pending_versions={sorted(pending_migrations)}")
 
     if not pending_migrations:

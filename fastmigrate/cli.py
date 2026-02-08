@@ -45,17 +45,12 @@ def _get_config(
         cfg.read(config_path)
         if "paths" in cfg:
             # Only use config values if CLI values are defaults
-            if "db" in cfg["paths"] and db == DEFAULT_DB:
-                db_path = Path(cfg["paths"]["db"])
-            else:
-                db_path = db
+            if "db" in cfg["paths"] and db == DEFAULT_DB: db_path = Path(cfg["paths"]["db"])
+            else: db_path = db
             if "migrations" in cfg["paths"] and migrations == DEFAULT_MIGRATIONS:
                 migrations_path = Path(cfg["paths"]["migrations"])
-            else:
-                migrations_path = migrations
-    else:
-        db_path = db
-        migrations_path = migrations
+            else: migrations_path = migrations
+    else: db_path,migrations_path = db,migrations
     return db_path, migrations_path
 
 def backup_db(
@@ -74,8 +69,7 @@ def backup_db(
     args = parser.parse_args(argv)
 
     db_path, _ = _get_config(args.config_path, args.db)
-    if core.create_db_backup(db_path) is None:
-        sys.exit(1)
+    if core.create_db_backup(db_path) is None: sys.exit(1)
 
 def check_version(
     db: Path = DEFAULT_DB, # Path to the SQLite database file
@@ -100,8 +94,7 @@ def check_version(
     try:
         db_version = core.get_db_version(db_path)
         print(f"Database version: {db_version}")
-    except sqlite3.Error:
-        print("Database is unversioned (no _meta table)")
+    except sqlite3.Error: print("Database is unversioned (no _meta table)")
     return
 
 
@@ -127,17 +120,13 @@ def create_db(
     try:
         # Check if file existed before we call create_db
         file_existed_before = db_path.exists()
-
         version = core.create_db(db_path)
-
         if not db_path.exists():
             print(f"Error: Expected database file to be created at {db_path}")
             sys.exit(1)
 
-        if not file_existed_before:
-            print(f"Created new versioned SQLite database with version=0 at: {db_path}")
-        else:
-            print(f"A versioned database (version: {version}) already exists at: {db_path}")
+        if not file_existed_before: print(f"Created new versioned SQLite database with version=0 at: {db_path}")
+        else: print(f"A versioned database (version: {version}) already exists at: {db_path}")
 
         sys.exit(0)
     except sqlite3.Error as e:
@@ -200,5 +189,4 @@ def run_migrations(
     core.setup_logging(args.verbose)
     db_path, migrations_path = _get_config(args.config_path, args.db, args.migrations)
     success = core.run_migrations(db_path, migrations_path)
-    if not success:
-        sys.exit(1)
+    if not success: sys.exit(1)
