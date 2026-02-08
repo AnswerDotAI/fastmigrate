@@ -197,7 +197,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="how-to-use-fastmigrate-in-your-app" class="level2">
 <h2 class="anchored" data-anchor-id="how-to-use-fastmigrate-in-your-app">How to use fastmigrate in your app</h2>
 <p>Once you have added a <code>migrations/</code> directory to your app, you would typically use fastmigrate in your application code like so:</p>
-<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastmigrate <span class="im">import</span> create_db, run_migrations</span>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastmigrate <span class="im">import</span> create_db, run_migrations, setup_logging</span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># At application startup:</span></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>db_path <span class="op">=</span> <span class="st">"path/to/database.db"</span></span>
@@ -206,9 +206,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Create/verify there is a versioned database</span></span>
 <span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>current_version <span class="op">=</span> create_db(db_path)</span>
 <span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply any pending migrations</span></span>
-<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> run_migrations(db_path, migrations_dir, verbose<span class="op">=</span><span class="va">False</span>):</span>
-<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Database migration failed!"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Optional: enable debug logs from fastmigrate</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>setup_logging(verbose<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply any pending migrations</span></span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> <span class="kw">not</span> run_migrations(db_path, migrations_dir):</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Database migration failed!"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <p>This will create a db if needed. Then, fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db’s version number as it proceeds, stopping if any migration fails.</p>
 <p>This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.</p>
 <p>If you get the idea and are just looking for a reminder about a reasonable workflow for safely adding a new migration please see this note on <a href="./docsrc/adding_migrations.qmd">safely adding migrations</a></p>
@@ -321,8 +324,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>fastmigrate_backup_db --db /path/to/data.db</code></pre>
 <p>Backup the database with a timestamped filename ending with a .backup extention. This is equivalent to calling <code>fastmigrate.backup_db()</code></p></li>
 <li><p><strong>Run migrations</strong>:</p>
-<pre><code>fastmigrate_run_migrations --db path/to/data.db</code></pre>
-<p>Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling <code>fastmigrate.run_migrations()</code></p></li>
+<pre><code>fastmigrate_run_migrations --db path/to/data.db --verbose</code></pre>
+<p>Run all needed migrations on the db. Fails if a migration fails, or if there is no managed db at the path. This is equivalent to calling <code>fastmigrate.run_migrations()</code>. Use <code>--verbose</code> to enable debug-level logs.</p></li>
 <li><p><strong>Enroll an existing db</strong>:</p>
 <pre><code>fastmigrate_enroll_db --db path/to/data.db</code></pre>
 <p>Enroll an existing SQLite database for versioning, adding a default initial migration called <code>0001-initial.sql</code>, then running it. Running the initial migration will set the version to 1. This is equivalent to calling <code>fastmigrate.enroll_db()</code></p></li>
