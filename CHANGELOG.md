@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.5.1
+
+- Clean up tests/style
+
+
 ## 0.5.0
 
 ## Enhancements
