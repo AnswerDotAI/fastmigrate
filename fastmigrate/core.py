@@ -69,9 +69,9 @@ class _UserBackend:
 def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
     """Load a user backend adapter from ``migrations_dir/config.py`` if present."""
     migrations_dir = Path(migrations_dir)
+    assert migrations_dir.exists()
     config_path = migrations_dir / "config.py"
-    if not config_path.exists():
-        return None
+    if not config_path.exists(): return None
 
     digest = hashlib.sha256(str(config_path).encode("utf-8")).hexdigest()[:12]
     module_name = f"fastmigrate_user_config_{digest}"
@@ -81,20 +81,12 @@ def _load_user_backend(migrations_dir: Path) -> Optional[_UserBackend]:
         raise ImportError(f"Unable to import config.py from {config_path}")
 
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)  # type: ignore[call-arg]
+    spec.loader.exec_module(module)
 
-    required = [
-        "get_connection",
-        "ensure_meta_table",
-        "get_version",
-        "set_version",
-        "execute_sql",
-    ]
+    required = [ "get_connection", "ensure_meta_table", "get_version", "set_version", "execute_sql", ]
     missing = [name for name in required if not hasattr(module, name)]
     if missing:
-        raise AttributeError(
-            f"config.py is missing required function(s): {', '.join(missing)}"
-        )
+        raise AttributeError( f"config.py is missing required function(s): {', '.join(missing)}")
 
     backend = _UserBackend(
         module=module,
@@ -128,25 +120,20 @@ def _run_async_blocking(coro: Awaitable[Any]) -> Any:
     If we're already inside an event loop, run the coroutine in a dedicated
     thread to avoid "asyncio.run() cannot be called from a running event loop".
     """
-    try:
-        asyncio.get_running_loop()
-    except RuntimeError:
-        return asyncio.run(coro)
+    try: asyncio.get_running_loop()
+    except RuntimeError: return asyncio.run(coro)
 
     result_box: dict[str, Any] = {}
     err_box: dict[str, BaseException] = {}
 
     def _runner() -> None:
-        try:
-            result_box["result"] = asyncio.run(coro)
-        except BaseException as e:  # pragma: no cover - hard to trigger reliably
-            err_box["err"] = e
+        try: result_box["result"] = asyncio.run(coro)
+        except BaseException as e: err_box["err"] = e
 
     t = threading.Thread(target=_runner, daemon=True)
     t.start()
     t.join()
-    if "err" in err_box:
-        raise err_box["err"]
+    if "err" in err_box: raise err_box["err"]
     return result_box.get("result")
 
 def create_db(db_path:Path) -> int:
@@ -166,8 +153,7 @@ def create_db(db_path:Path) -> int:
         conn.close()
         _ensure_meta_table(db_path)
         return 0
-    else:
-        return get_db_version(db_path)
+    else: return get_db_version(db_path)
 
 
 def ensure_versioned_db(db_path:Path) -> int:
@@ -304,7 +290,7 @@ def _set_db_version(db_path: Path, version: int) -> None:
 
 def extract_version_from_filename(filename: str) -> Optional[int]:
     """Extract the version number from a migration script filename."""
-    filename = str(filename) # Force Path objects to string
+    filename = str(filename)
     match = re.match(r"^(\d{4})-.*\.(py|sql|sh)$", filename)
     if match:
         return int(match.group(1))
@@ -452,7 +438,7 @@ def create_db_backup(db_path: Path) -> Path | None:
         print(f"Error during backup: {e}")
         if backup_path.exists():
             try:
-                backup_path.unlink() # remove the file
+                backup_path.unlink()
                 print(f"Removed incomplete backup file: {backup_path}")
             except OSError as remove_err:
                 print(f"Error removing incomplete backup file: {remove_err}", file=stderr)
