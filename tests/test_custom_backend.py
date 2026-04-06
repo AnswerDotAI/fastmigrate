@@ -4,7 +4,6 @@ These tests are written to run when optional dev dependencies are installed.
 If SQLAlchemy / DuckDB are missing, the tests are skipped.
 """
 
-from __future__ import annotations
 
 import textwrap
 import sqlite3
