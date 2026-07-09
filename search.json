@@ -1,75 +1,5 @@
 [
   {
-    "objectID": "enrolling.html",
-    "href": "enrolling.html",
-    "title": "Enrolling an existing db",
-    "section": "",
-    "text": "Here’s how to add an existing db to be managed by fastmigrate.\n\nBack up your database, of course.\nRun fastmigrate_enroll_db --db /path/to/database.db against your current database.\nThis will modify your database, marking it as version 1 by adding a _meta table.\nIt will also generate an initial migration script, 0001-initialize.sql, which is for creating an empty “version 1” database with the same schema as your current database.\nMove your current database to somewhere safe, update your application’s db setup code to use fastmigrate, and run it.\nimport fastmigrate\nfastmigrate.create_db(\"/path/to/database.db\")\nfastmigrate.run_migrations(\"/path/to/database.db\")\n# application code continues from here\nSince you moved your real db, fastmigrate will create a new db at that path based on the initial migration script.\nCheck your app, to see if it is working fine.\nIf it is, your initialization script is correct, and your can move your real database back into place.\nIf not, then you will need to edit that initialization script, so that it produces a database which is equivalent to your current database.",
-    "crumbs": [
-      "Enrolling an existing db"
-    ]
-  },
-  {
-    "objectID": "enrolling.html#enroll-an-existing-db",
-    "href": "enrolling.html#enroll-an-existing-db",
-    "title": "Enrolling an existing db",
-    "section": "",
-    "text": "Here’s how to add an existing db to be managed by fastmigrate.\n\nBack up your database, of course.\nRun fastmigrate_enroll_db --db /path/to/database.db against your current database.\nThis will modify your database, marking it as version 1 by adding a _meta table.\nIt will also generate an initial migration script, 0001-initialize.sql, which is for creating an empty “version 1” database with the same schema as your current database.\nMove your current database to somewhere safe, update your application’s db setup code to use fastmigrate, and run it.\nimport fastmigrate\nfastmigrate.create_db(\"/path/to/database.db\")\nfastmigrate.run_migrations(\"/path/to/database.db\")\n# application code continues from here\nSince you moved your real db, fastmigrate will create a new db at that path based on the initial migration script.\nCheck your app, to see if it is working fine.\nIf it is, your initialization script is correct, and your can move your real database back into place.\nIf not, then you will need to edit that initialization script, so that it produces a database which is equivalent to your current database.",
-    "crumbs": [
-      "Enrolling an existing db"
-    ]
-  },
-  {
-    "objectID": "enrolling.html#the-reason-for-this-procedure",
-    "href": "enrolling.html#the-reason-for-this-procedure",
-    "title": "Enrolling an existing db",
-    "section": "The reason for this procedure",
-    "text": "The reason for this procedure\nAs long as you use fastmigrate with valid migration scripts, fastmigrate can guarantee whch version of your database it presented to your application code. This is the value of managed migrations.\nHowever, to provide this guarantee, you need your database to be managed by fastmigrate – that is, to be explicitly marked with a version, in its _meta table. If you created the database with fastmigrate (using create_db or the fastmigrate_create_db CLI command), then it is managed.\nBut what if you are starting with an application built outside of fastmigrate, and you want to enroll the database in fastmigrate?\nTo recap the basic idea of what migrations are, the fundamental guarantee which we need to maintain is this: any database which has a fastmigrate version number (like 1, or like 3) is in the state which would be produced by the migration script with that version number (like by 0001-initialize.sql or 0003-unify-users.sql).\nSo when enrolling an existing db, you need to assign a version to the db you already have. But since that version number takes its meaning from the migration script which would produce it, you also need to create a migration script which would produce a database like yours. That script is also practically useful. If you ever want to deploy a new instance of your database, or run fresh instancs for debugging, you need that initialization script to create the initial, empty state of a db for your application to use.\nfastmigrate_enroll_db is merely a helper for those tasks. It marks your database, and generates an initialization migration script.\n\nOne reason enrollment needs manual inspection\nWhy is this not 100% automatic?\nThe tool generates the migration script based on the schema of your existing database. In many cases, that is all that matters for defining the version of a database, because the schema is all that the application code depends on.\nHowever, this will not be enough if you application requires not only a particular table schema, but also certain initial data values to be present. In that case you will need to add code to your the initialization script which not only creates the necessary tables but also inserts those values.\nFor instance, if your application code merely required a user table which tracked settings, you would expect a line like this:\nCREATE TABLE user (id INTEGER, settings TEXT);\nBut if your application code also required that the database start with one row in that table, defining a user with an ID of 1 and settings which were an empty pair of brances, then you would also add a line like so:\nINSERT INTO user VALUES (1, 0, '{}');\nThis subltety is a reason why it is not strictly accurate to say migrations version exist only to track schema schema. In fact, they define versions which should track what application code expects, which likely includes versions but not only versions.",
-    "crumbs": [
-      "Enrolling an existing db"
-    ]
-  },
-  {
-    "objectID": "custom_backends.html",
-    "href": "custom_backends.html",
-    "title": "Custom database backends",
-    "section": "",
-    "text": "Fastmigrate is SQLite-first by default.\nIf you want to use fastmigrate’s migration-runner with another database driver (asyncpg, psycopg3, SQLAlchemy, DuckDB, etc.), you can provide a tiny backend adapter in your migrations directory:\nWhen this file exists, fastmigrate.run_migrations() will delegate the DB-specific operations to it:\n.py and .sh migrations are executed as separate processes as usual, with str(db) passed as the first positional argument.",
-    "crumbs": [
-      "Custom database backends"
-    ]
-  },
-  {
-    "objectID": "custom_backends.html#minimal-required-functions",
-    "href": "custom_backends.html#minimal-required-functions",
-    "title": "Custom database backends",
-    "section": "Minimal required functions",
-    "text": "Minimal required functions\nYour migrations/config.py must define the following functions. Each function may be sync or async. If a function returns an awaitable, fastmigrate automatically awaits it.\ndef get_connection(db):\n    \"\"\"Return any handle you want fastmigrate to pass around (engine, pool, etc).\"\"\"\n\ndef ensure_meta_table(conn):\n    \"\"\"Create the _meta table (and an initial version row) if missing.\"\"\"\n\ndef get_version(conn) -&gt; int:\n    \"\"\"Return the current version from _meta.\"\"\"\n\ndef set_version(conn, version: int):\n    \"\"\"Persist the schema version in _meta.\"\"\"\n\ndef execute_sql(conn, sql: str):\n    \"\"\"Execute a SQL migration.\n\n    Return True/None on success; return False or raise on failure.\n    \"\"\"\n\n# optional\ndef close_connection(conn):\n    \"\"\"Dispose/close the handle returned by get_connection.\"\"\"",
-    "crumbs": [
-      "Custom database backends"
-    ]
-  },
-  {
-    "objectID": "custom_backends.html#example-sqlalchemy-adapter-sqlite",
-    "href": "custom_backends.html#example-sqlalchemy-adapter-sqlite",
-    "title": "Custom database backends",
-    "section": "Example: SQLAlchemy adapter (SQLite)",
-    "text": "Example: SQLAlchemy adapter (SQLite)\nfrom sqlalchemy import create_engine\n\ndef get_connection(db):\n    return create_engine(f\"sqlite+pysqlite:///{db}\")\n\ndef close_connection(engine):\n    engine.dispose()\n\ndef ensure_meta_table(engine):\n    with engine.begin() as conn:\n        conn.exec_driver_sql(\n            \"CREATE TABLE IF NOT EXISTS _meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)\"\n        )\n        row = conn.exec_driver_sql(\"SELECT version FROM _meta WHERE id=1\").fetchone()\n        if row is None:\n            conn.exec_driver_sql(\"INSERT INTO _meta (id, version) VALUES (1, 0)\")\n\ndef get_version(engine):\n    with engine.connect() as conn:\n        row = conn.exec_driver_sql(\"SELECT version FROM _meta WHERE id=1\").fetchone()\n        return int(row[0]) if row else 0\n\ndef set_version(engine, version: int):\n    with engine.begin() as conn:\n        conn.exec_driver_sql(\"DELETE FROM _meta WHERE id=1\")\n        conn.exec_driver_sql(\"INSERT INTO _meta (id, version) VALUES (1, ?)\", (int(version),))\n\ndef execute_sql(engine, sql: str):\n    with engine.begin() as conn:\n        # This split is intentionally simple; use a more robust approach if needed.\n        for stmt in [s.strip() for s in sql.split(\";\") if s.strip()]:\n            conn.exec_driver_sql(stmt)",
-    "crumbs": [
-      "Custom database backends"
-    ]
-  },
-  {
-    "objectID": "adding_migrations.html",
-    "href": "adding_migrations.html",
-    "title": "Add a new migration",
-    "section": "",
-    "text": "So you need to modify your db schema? And you want to be very sure you are doing it correctly?\nThis page is a suggested workflow to remind you how to go about this process, assuming your application is already using fastmigrate.\n\nWhat should already be in your app\nIf your app is using fastmigrate, then two things should already be in your codebase.\nFirst, there will be a migrations directory, which contains migration scripts numbered like 0001-initialize.sql, 0002-next-thing.py, 0003-another-thing.sql, and so on, all the way up to 0010-latest-thing.sql (for instance).\nSecond, your app will either have initialization code which looks a bit like this:\nfrom fastmigrate.core import create_db, run_migrations\ndb_path = \"path/to/data.db\"\nmigrations_dir = \"path/to/migrations/\"\ncurrent_version = create_db(db_path)\nsuccess = run_migrations(db_path, migrations_dir, verbose=False)\nif not success:\n    # Handle migration failure\n    print(\"Database migration failed!\")\nOr you are relying on the fastmigrate command line tool to do this for you, in which case you will have a command like this in your deployment script:\nfastmigrate_create_db --db /path/to/data.db\nfastmigrate_backup_db --db /path/to/data.db\nfastmigrate_run_migrations --migrations /path/to/migrations/ --db /path/to/data.db\nTo recap, what is going on here is that the highest-numbered migration script (0010-latest-thing.sql in this example), defines the guaranteed version of your database. The initialization code is what enforces that guarantee. After the initialization code has run successfully, the rest of your app can and should assume that your database is at version 10.\n\n\nWhat to add to your app\nSo what does this imply about adding a new migration?\nSuppose that you want to change your db schema, so that it does “one more thing”. This defines a next version of your database. Since the current version of your db is 10, the next version of your database will be 11.\n\nSo the first thing you should do is write the migration script which updates your database from its current version to the next version, as a file named 0011-one-more-thing.py (or .sql or .sh).\nThe second thing you should do is update all of your application code so that it now expects to see version 11 of your database. That is, all the code which runs after the init code should assume migration has taken place. It does not need conditional paths to handle the older version, version 10, because the fastmigrate initialization code is responsible for running the migration script if necessary, and it will have succeeded or explicitly failed.\n\nThose two changes you made – adding a new migration script, and updating your application code – should ideally be added to your version control with the same commit since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a moment when you want code which expects version 11 to see a database at version 10. So it is unwise to check in these changes separately.\n\nNote: fastmigrate runs .sql migrations using Python’s built-in sqlite3. You only need the external sqlite3 binary if your own .sh migrations invoke it, or if you want to inspect the database from the command line.\n\n\n\nHow to test\nOf course, test your application locally before pushing or deploying.\nHow? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run fastmigrate_run_migrations /path/to/migrations --db /path/to/data.db, with data.db at version 10 and an 0011 script in migrations/, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.\nThe fundamental rule to keep in mind with migrations is that you only ever add an additional migration. You never go back and change old ones. You could say the collection of migrations is append only. This is what makes them reliable, because it is what guarantees that they are always working from a known state. But it is also what can make the workflow for adding a new migration unfamiliar, since you need to think in terms of the diffs to the database, even while your application code is usually thinking in terms of the database’s instantaneous state.",
-    "crumbs": [
-      "Add a new migration"
-    ]
-  },
-  {
     "objectID": "index.html",
     "href": "index.html",
     "title": "fastmigrate",
@@ -131,5 +61,75 @@
     "title": "fastmigrate",
     "section": "",
     "text": "To contribute to fastmigrate, create an editable install with the dev dependency group using your favorite package manager.\nFor example, with uv (preferred):\nuv sync\nor with pip 25.1:\npip install -e . --group dev"
+  },
+  {
+    "objectID": "enrolling.html",
+    "href": "enrolling.html",
+    "title": "Enrolling an existing db",
+    "section": "",
+    "text": "Here’s how to add an existing db to be managed by fastmigrate.\n\nBack up your database, of course.\nRun fastmigrate_enroll_db --db /path/to/database.db against your current database.\nThis will modify your database, marking it as version 1 by adding a _meta table.\nIt will also generate an initial migration script, 0001-initialize.sql, which is for creating an empty “version 1” database with the same schema as your current database.\nMove your current database to somewhere safe, update your application’s db setup code to use fastmigrate, and run it.\nimport fastmigrate\nfastmigrate.create_db(\"/path/to/database.db\")\nfastmigrate.run_migrations(\"/path/to/database.db\")\n# application code continues from here\nSince you moved your real db, fastmigrate will create a new db at that path based on the initial migration script.\nCheck your app, to see if it is working fine.\nIf it is, your initialization script is correct, and your can move your real database back into place.\nIf not, then you will need to edit that initialization script, so that it produces a database which is equivalent to your current database.",
+    "crumbs": [
+      "Enrolling an existing db"
+    ]
+  },
+  {
+    "objectID": "enrolling.html#enroll-an-existing-db",
+    "href": "enrolling.html#enroll-an-existing-db",
+    "title": "Enrolling an existing db",
+    "section": "",
+    "text": "Here’s how to add an existing db to be managed by fastmigrate.\n\nBack up your database, of course.\nRun fastmigrate_enroll_db --db /path/to/database.db against your current database.\nThis will modify your database, marking it as version 1 by adding a _meta table.\nIt will also generate an initial migration script, 0001-initialize.sql, which is for creating an empty “version 1” database with the same schema as your current database.\nMove your current database to somewhere safe, update your application’s db setup code to use fastmigrate, and run it.\nimport fastmigrate\nfastmigrate.create_db(\"/path/to/database.db\")\nfastmigrate.run_migrations(\"/path/to/database.db\")\n# application code continues from here\nSince you moved your real db, fastmigrate will create a new db at that path based on the initial migration script.\nCheck your app, to see if it is working fine.\nIf it is, your initialization script is correct, and your can move your real database back into place.\nIf not, then you will need to edit that initialization script, so that it produces a database which is equivalent to your current database.",
+    "crumbs": [
+      "Enrolling an existing db"
+    ]
+  },
+  {
+    "objectID": "enrolling.html#the-reason-for-this-procedure",
+    "href": "enrolling.html#the-reason-for-this-procedure",
+    "title": "Enrolling an existing db",
+    "section": "The reason for this procedure",
+    "text": "The reason for this procedure\nAs long as you use fastmigrate with valid migration scripts, fastmigrate can guarantee whch version of your database it presented to your application code. This is the value of managed migrations.\nHowever, to provide this guarantee, you need your database to be managed by fastmigrate – that is, to be explicitly marked with a version, in its _meta table. If you created the database with fastmigrate (using create_db or the fastmigrate_create_db CLI command), then it is managed.\nBut what if you are starting with an application built outside of fastmigrate, and you want to enroll the database in fastmigrate?\nTo recap the basic idea of what migrations are, the fundamental guarantee which we need to maintain is this: any database which has a fastmigrate version number (like 1, or like 3) is in the state which would be produced by the migration script with that version number (like by 0001-initialize.sql or 0003-unify-users.sql).\nSo when enrolling an existing db, you need to assign a version to the db you already have. But since that version number takes its meaning from the migration script which would produce it, you also need to create a migration script which would produce a database like yours. That script is also practically useful. If you ever want to deploy a new instance of your database, or run fresh instancs for debugging, you need that initialization script to create the initial, empty state of a db for your application to use.\nfastmigrate_enroll_db is merely a helper for those tasks. It marks your database, and generates an initialization migration script.\n\nOne reason enrollment needs manual inspection\nWhy is this not 100% automatic?\nThe tool generates the migration script based on the schema of your existing database. In many cases, that is all that matters for defining the version of a database, because the schema is all that the application code depends on.\nHowever, this will not be enough if you application requires not only a particular table schema, but also certain initial data values to be present. In that case you will need to add code to your the initialization script which not only creates the necessary tables but also inserts those values.\nFor instance, if your application code merely required a user table which tracked settings, you would expect a line like this:\nCREATE TABLE user (id INTEGER, settings TEXT);\nBut if your application code also required that the database start with one row in that table, defining a user with an ID of 1 and settings which were an empty pair of brances, then you would also add a line like so:\nINSERT INTO user VALUES (1, 0, '{}');\nThis subltety is a reason why it is not strictly accurate to say migrations version exist only to track schema schema. In fact, they define versions which should track what application code expects, which likely includes versions but not only versions.",
+    "crumbs": [
+      "Enrolling an existing db"
+    ]
+  },
+  {
+    "objectID": "adding_migrations.html",
+    "href": "adding_migrations.html",
+    "title": "Add a new migration",
+    "section": "",
+    "text": "So you need to modify your db schema? And you want to be very sure you are doing it correctly?\nThis page is a suggested workflow to remind you how to go about this process, assuming your application is already using fastmigrate.\n\nWhat should already be in your app\nIf your app is using fastmigrate, then two things should already be in your codebase.\nFirst, there will be a migrations directory, which contains migration scripts numbered like 0001-initialize.sql, 0002-next-thing.py, 0003-another-thing.sql, and so on, all the way up to 0010-latest-thing.sql (for instance).\nSecond, your app will either have initialization code which looks a bit like this:\nfrom fastmigrate.core import create_db, run_migrations\ndb_path = \"path/to/data.db\"\nmigrations_dir = \"path/to/migrations/\"\ncurrent_version = create_db(db_path)\nsuccess = run_migrations(db_path, migrations_dir, verbose=False)\nif not success:\n    # Handle migration failure\n    print(\"Database migration failed!\")\nOr you are relying on the fastmigrate command line tool to do this for you, in which case you will have a command like this in your deployment script:\nfastmigrate_create_db --db /path/to/data.db\nfastmigrate_backup_db --db /path/to/data.db\nfastmigrate_run_migrations --migrations /path/to/migrations/ --db /path/to/data.db\nTo recap, what is going on here is that the highest-numbered migration script (0010-latest-thing.sql in this example), defines the guaranteed version of your database. The initialization code is what enforces that guarantee. After the initialization code has run successfully, the rest of your app can and should assume that your database is at version 10.\n\n\nWhat to add to your app\nSo what does this imply about adding a new migration?\nSuppose that you want to change your db schema, so that it does “one more thing”. This defines a next version of your database. Since the current version of your db is 10, the next version of your database will be 11.\n\nSo the first thing you should do is write the migration script which updates your database from its current version to the next version, as a file named 0011-one-more-thing.py (or .sql or .sh).\nThe second thing you should do is update all of your application code so that it now expects to see version 11 of your database. That is, all the code which runs after the init code should assume migration has taken place. It does not need conditional paths to handle the older version, version 10, because the fastmigrate initialization code is responsible for running the migration script if necessary, and it will have succeeded or explicitly failed.\n\nThose two changes you made – adding a new migration script, and updating your application code – should ideally be added to your version control with the same commit since they are coordinated changes. There will never come a moment when you want code which expects version 10 to see a database at version 11, nor a moment when you want code which expects version 11 to see a database at version 10. So it is unwise to check in these changes separately.\n\nNote: fastmigrate runs .sql migrations using Python’s built-in sqlite3. You only need the external sqlite3 binary if your own .sh migrations invoke it, or if you want to inspect the database from the command line.\n\n\n\nHow to test\nOf course, test your application locally before pushing or deploying.\nHow? In addition to normal application testing, you might want to test your migration script in isolation from your application code. The easiest way to do that is by using the fastmigrate command line tool. If you run fastmigrate_run_migrations /path/to/migrations --db /path/to/data.db, with data.db at version 10 and an 0011 script in migrations/, then it will update the data to version 11 in isolation. You can then manually inspect the migrated database using sqlite3 or any other tool of your choice.\nThe fundamental rule to keep in mind with migrations is that you only ever add an additional migration. You never go back and change old ones. You could say the collection of migrations is append only. This is what makes them reliable, because it is what guarantees that they are always working from a known state. But it is also what can make the workflow for adding a new migration unfamiliar, since you need to think in terms of the diffs to the database, even while your application code is usually thinking in terms of the database’s instantaneous state.",
+    "crumbs": [
+      "Add a new migration"
+    ]
+  },
+  {
+    "objectID": "custom_backends.html",
+    "href": "custom_backends.html",
+    "title": "Custom database backends",
+    "section": "",
+    "text": "Fastmigrate is SQLite-first by default.\nIf you want to use fastmigrate’s migration-runner with another database driver (asyncpg, psycopg3, SQLAlchemy, DuckDB, etc.), you can provide a tiny backend adapter in your migrations directory:\nWhen this file exists, fastmigrate.run_migrations() will delegate the DB-specific operations to it:\n.py and .sh migrations are executed as separate processes as usual, with str(db) passed as the first positional argument.",
+    "crumbs": [
+      "Custom database backends"
+    ]
+  },
+  {
+    "objectID": "custom_backends.html#minimal-required-functions",
+    "href": "custom_backends.html#minimal-required-functions",
+    "title": "Custom database backends",
+    "section": "Minimal required functions",
+    "text": "Minimal required functions\nYour migrations/config.py must define the following functions. Each function may be sync or async. If a function returns an awaitable, fastmigrate automatically awaits it.\ndef get_connection(db):\n    \"\"\"Return any handle you want fastmigrate to pass around (engine, pool, etc).\"\"\"\n\ndef ensure_meta_table(conn):\n    \"\"\"Create the _meta table (and an initial version row) if missing.\"\"\"\n\ndef get_version(conn) -&gt; int:\n    \"\"\"Return the current version from _meta.\"\"\"\n\ndef set_version(conn, version: int):\n    \"\"\"Persist the schema version in _meta.\"\"\"\n\ndef execute_sql(conn, sql: str):\n    \"\"\"Execute a SQL migration.\n\n    Return True/None on success; return False or raise on failure.\n    \"\"\"\n\n# optional\ndef close_connection(conn):\n    \"\"\"Dispose/close the handle returned by get_connection.\"\"\"",
+    "crumbs": [
+      "Custom database backends"
+    ]
+  },
+  {
+    "objectID": "custom_backends.html#example-sqlalchemy-adapter-sqlite",
+    "href": "custom_backends.html#example-sqlalchemy-adapter-sqlite",
+    "title": "Custom database backends",
+    "section": "Example: SQLAlchemy adapter (SQLite)",
+    "text": "Example: SQLAlchemy adapter (SQLite)\nfrom sqlalchemy import create_engine\n\ndef get_connection(db):\n    return create_engine(f\"sqlite+pysqlite:///{db}\")\n\ndef close_connection(engine):\n    engine.dispose()\n\ndef ensure_meta_table(engine):\n    with engine.begin() as conn:\n        conn.exec_driver_sql(\n            \"CREATE TABLE IF NOT EXISTS _meta (id INTEGER PRIMARY KEY, version INTEGER NOT NULL)\"\n        )\n        row = conn.exec_driver_sql(\"SELECT version FROM _meta WHERE id=1\").fetchone()\n        if row is None:\n            conn.exec_driver_sql(\"INSERT INTO _meta (id, version) VALUES (1, 0)\")\n\ndef get_version(engine):\n    with engine.connect() as conn:\n        row = conn.exec_driver_sql(\"SELECT version FROM _meta WHERE id=1\").fetchone()\n        return int(row[0]) if row else 0\n\ndef set_version(engine, version: int):\n    with engine.begin() as conn:\n        conn.exec_driver_sql(\"DELETE FROM _meta WHERE id=1\")\n        conn.exec_driver_sql(\"INSERT INTO _meta (id, version) VALUES (1, ?)\", (int(version),))\n\ndef execute_sql(engine, sql: str):\n    with engine.begin() as conn:\n        # This split is intentionally simple; use a more robust approach if needed.\n        for stmt in [s.strip() for s in sql.split(\";\") if s.strip()]:\n            conn.exec_driver_sql(stmt)",
+    "crumbs": [
+      "Custom database backends"
+    ]
   }
 ]
