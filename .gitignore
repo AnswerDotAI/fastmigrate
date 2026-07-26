@@ -36,3 +36,4 @@ data/
 # Quarto
 _site/
 .quarto/
+meta/
