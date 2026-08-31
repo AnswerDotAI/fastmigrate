@@ -13,9 +13,7 @@ pip install fastmigrate
 uv add fastmigrate
 ```
 
-Fastmigrate itself does not require the external ``sqlite3`` command-line tool.
-If you choose to write ``.sh`` migrations that invoke ``sqlite3`` yourself, you'll
-need it installed, but ``.sql`` migrations run via Python's built-in sqlite3.
+Fastmigrate itself does not require the external ``sqlite3`` command-line tool. If you choose to write ``.sh`` migrations that invoke ``sqlite3`` yourself, you'll need it installed, but ``.sql`` migrations run via Python's built-in sqlite3.
 
 ## How to use fastmigrate in your app
 
@@ -69,8 +67,7 @@ When Fastmigrate encounters an error, it stops. It does not attempt to roll back
 
 ## Using fastmigrate with non-SQLite databases
 
-Fastmigrate is **SQLite-first** by default, but you can make it **database-independent**
-by providing a backend adapter at:
+Fastmigrate is **SQLite-first** by default, but you can make it **database-independent** by providing a backend adapter at:
 
 ```
 <your migrations dir>/config.py
@@ -83,13 +80,11 @@ When this file exists, :func:`fastmigrate.run_migrations` will:
   - create the ``_meta`` table (if needed)
   - read/update the version number
   - execute ``.sql`` migrations using your database driver
-- still run ``.py`` and ``.sh`` migrations the same way as usual (passing
-  ``str(db)`` as the first positional argument)
+- still run ``.py`` and ``.sh`` migrations the same way as usual (passing ``str(db)`` as the first positional argument)
 
 ### Minimal required functions in ``config.py``
 
-Each hook may be **sync or async**. If a hook returns an awaitable/coroutine,
-fastmigrate will automatically await it.
+Each hook may be **sync or async**. If a hook returns an awaitable/coroutine, fastmigrate will automatically await it.
 
 ```python
 def get_connection(db): ...
@@ -136,9 +131,7 @@ def execute_sql(engine, sql: str):
 ```
 ### Sync or async hooks
 
-Each function may be sync or async. If any hook returns an awaitable, fastmigrate
-automatically awaits it so adapters can be built on asyncpg, SQLAlchemy asyncio,
-psycopg3 async mode, etc.
+Each function may be sync or async. If any hook returns an awaitable, fastmigrate automatically awaits it so adapters can be built on asyncpg, SQLAlchemy asyncio, psycopg3 async mode, etc.
 
 ## How to use fastmigrate from the command line
 
