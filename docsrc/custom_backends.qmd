@@ -23,6 +23,8 @@ DB-specific operations to it:
 `.py` and `.sh` migrations are executed as separate processes as usual, with
 `str(db)` passed as the first positional argument.
 
+`fastmigrate.arun_migrations()` does the same from async code. It awaits the hooks on the calling event loop instead of a private one.
+
 ## Minimal required functions
 
 Your `migrations/config.py` must define the following functions.

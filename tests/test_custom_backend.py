@@ -5,13 +5,14 @@ If SQLAlchemy / DuckDB are missing, the tests are skipped.
 """
 
 
+import asyncio
 import textwrap
 import sqlite3
 from pathlib import Path
 
 import pytest
 
-from fastmigrate.core import run_migrations
+from fastmigrate.core import arun_migrations, run_migrations
 
 
 def test_custom_config_with_sqlalchemy_sqlite(tmp_path: Path) -> None:
@@ -175,7 +176,8 @@ def test_custom_config_with_duckdb_async(tmp_path: Path) -> None:
         "INSERT INTO things VALUES (1, 'hello');"
     )
 
-    assert run_migrations(db_path, migrations_dir, verbose=True) is True
+    assert asyncio.run(arun_migrations(db_path, migrations_dir, verbose=True)) is True
+    assert run_migrations(db_path, migrations_dir) is True
 
     conn = duckdb.connect(str(db_path))
     try:

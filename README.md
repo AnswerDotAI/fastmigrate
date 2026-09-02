@@ -37,6 +37,8 @@ if not run_migrations(db_path, migrations_dir):
     print("Database migration failed!")
 ```
 
+`arun_migrations` is the awaitable form of `run_migrations` for async applications. It runs a custom backend's hooks on the calling event loop, and runs the SQLite path in a worker thread.
+
 This will create a db if needed. Then, fastmigrate will detect every validly-named migration script in the migrations directory, select the ones with version numbers greater than the current db version number, and run the migration in alphabetical order, updating the db's version number as it proceeds, stopping if any migration fails.
 
 This will guarantee that all subsequent code will encounter a database at the schema version defined by your highest-numbered migration script. So when you deploy updates to your app, those updates should include any new migration scripts along with modifications to code, which should now expect the new db schema.
