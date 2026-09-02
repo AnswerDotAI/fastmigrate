@@ -31,7 +31,7 @@ from typing import Any, Awaitable, Callable, Dict, Optional
 
 
 
-__all__ = ["run_migrations", "create_db", "get_db_version", "create_db_backup", "setup_logging", "ensure_versioned_db", "create_database_backup"]
+__all__ = ["run_migrations", "arun_migrations", "create_db", "get_db_version", "create_db_backup", "setup_logging", "ensure_versioned_db", "create_database_backup"]
 
 _logger = logging.getLogger("fastmigrate")
 _logger.addHandler(logging.NullHandler())
@@ -494,6 +494,21 @@ async def _run_migrations_with_backend_async( db: Any, migrations_dir: Path, bac
     finally:
         if backend.close_connection is not None: await _maybe_await(backend.close_connection(conn))
 
+
+async def arun_migrations( db_path: Any, migrations_dir: Path, verbose: bool = False,) -> bool:
+    """Awaitable form of ``run_migrations`` for async applications.
+
+    A custom backend's hooks run on the calling event loop. The SQLite path
+    runs ``run_migrations`` in a worker thread.
+
+    Returns True if all migrations succeed, False otherwise.
+    """
+    if verbose: setup_logging(True)
+    migrations_dir = Path(migrations_dir)
+    backend = _load_user_backend(migrations_dir)
+    if backend is None: return await asyncio.to_thread(run_migrations, db_path, migrations_dir)
+    _logger.debug(f"db_exists={_debug_db_exists(db_path)}")
+    return bool(await _run_migrations_with_backend_async(db_path, migrations_dir, backend, verbose))
 
 def run_migrations( db_path: Any, migrations_dir: Path, verbose: bool = False,) -> bool:
     """Run all pending migrations.
