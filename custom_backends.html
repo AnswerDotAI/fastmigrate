@@ -213,6 +213,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li>execute <code>.sql</code> migration files</li>
 </ul>
 <p><code>.py</code> and <code>.sh</code> migrations are executed as separate processes as usual, with <code>str(db)</code> passed as the first positional argument.</p>
+<p><code>fastmigrate.arun_migrations()</code> does the same from async code. It awaits the hooks on the calling event loop instead of a private one.</p>
 <section id="minimal-required-functions" class="level2">
 <h2 class="anchored" data-anchor-id="minimal-required-functions">Minimal required functions</h2>
 <p>Your <code>migrations/config.py</code> must define the following functions. Each function may be <strong>sync or async</strong>. If a function returns an awaitable, fastmigrate automatically awaits it.</p>
