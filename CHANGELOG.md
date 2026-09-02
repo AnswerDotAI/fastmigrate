@@ -1,5 +1,14 @@
 # Release Notes
 
+<!-- do not remove -->
+
+## 0.5.3
+
+### New Features
+
+- Add `arun_migrations`, the awaitable form of `run_migrations` ([#29](https://github.com/AnswerDotAI/fastmigrate/pull/29)), thanks to [@jph00](https://github.com/jph00)
+
+
 ## 0.5.2
 
 - Clean up tests/style
@@ -45,4 +54,3 @@
   
 - API now takes `Path` objects as well as `str` objects, which also
   enables path completion
-
