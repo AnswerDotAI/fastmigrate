@@ -1,214 +1,123 @@
-"""Integration tests for fastmigrate."""
+"Real migration journeys, from database enrollment through failure and recovery."
 
-import os
-import sqlite3
-from pathlib import Path
+import shlex, sqlite3, subprocess, sys
+from contextlib import closing
 
 import pytest
 
-from fastmigrate.core import run_migrations, _ensure_meta_table
+from fastmigrate.core import create_db, get_db_version, get_migration_scripts, run_migrations
 
 
-def test_run_migrations_sql(tmp_path):
-    """Test running SQL migrations."""
-    migrations_dir = tmp_path / "migrations"
-    migrations_dir.mkdir()
-
-    # Create a test database
-    db_path = tmp_path / "test.db"
-    # Create empty database file
-    conn = sqlite3.connect(db_path)
-    conn.close()
-
-    # Initialize the database with _meta table
-    _ensure_meta_table(db_path)
-
-    # Create SQL migration files
-    with open(migrations_dir / "0001-create-table.sql", "w") as f:
-        f.write("""
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL
-        );
-        """)
-
-    with open(migrations_dir / "0002-add-data.sql", "w") as f:
-        f.write("""
-        INSERT INTO users (name) VALUES ('Alice');
-        INSERT INTO users (name) VALUES ('Bob');
-        """)
-
-    # Run migrations
-    assert run_migrations(db_path, migrations_dir) is True
-
-    # Check the database changes
-    conn = sqlite3.connect(db_path)
-    cursor = conn.execute("SELECT version FROM _meta")
-    assert cursor.fetchone()[0] == 2  # Version should be updated to the last migration
-
-    cursor = conn.execute("SELECT COUNT(*) FROM users")
-    assert cursor.fetchone()[0] == 2  # Should have 2 users
-
-    cursor = conn.execute("SELECT name FROM users ORDER BY id")
-    names = [row[0] for row in cursor.fetchall()]
-    assert names == ["Alice", "Bob"]
-
-    # Add another migration
-    with open(migrations_dir / "0003-add-column.sql", "w") as f:
-        f.write("""
-        ALTER TABLE users ADD COLUMN email TEXT;
-        UPDATE users SET email = 'alice@example.com' WHERE name = 'Alice';
-        UPDATE users SET email = 'bob@example.com' WHERE name = 'Bob';
-        """)
-
-    # Run migrations again
-    assert run_migrations(db_path, migrations_dir) is True
-
-    # Check the version is updated
-    cursor = conn.execute("SELECT version FROM _meta")
-    assert cursor.fetchone()[0] == 3
-
-    # Check the new column
-    cursor = conn.execute("SELECT name, email FROM users ORDER BY id")
-    results = cursor.fetchall()
-    assert results == [("Alice", "alice@example.com"), ("Bob", "bob@example.com")]
-
-    conn.close()
+def query(db, sql):
+    with closing(sqlite3.connect(db)) as conn, conn: return conn.execute(sql).fetchall()
 
 
-def test_run_migrations_python(tmp_path):
-    """Test running Python migrations."""
-    migrations_dir = tmp_path / "migrations"
-    migrations_dir.mkdir()
-
-    # Create a test database
-    db_path = tmp_path / "test.db"
-    # Create empty database file
-    conn = sqlite3.connect(db_path)
-    conn.close()
-
-    # Initialize the database with _meta table
-    _ensure_meta_table(db_path)
-
-    # Create a base SQL migration
-    with open(migrations_dir / "0001-create-table.sql", "w") as f:
-        f.write("""
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL
-        );
-        """)
-
-    # Create Python migration
-    with open(migrations_dir / "0002-add-data.py", "w") as f:
-        f.write("""#!/usr/bin/env python
-import sqlite3
-import sys
-
-def main():
-    db_path = sys.argv[1]
-    conn = sqlite3.connect(db_path)
-    conn.execute("INSERT INTO users (name) VALUES ('Charlie')")
-    conn.execute("INSERT INTO users (name) VALUES ('Dave')")
-    conn.commit()
-    conn.close()
-    return 0
-
-if __name__ == "__main__":
-    sys.exit(main())
-        """)
-
-    # Run migrations
-    assert run_migrations(db_path, migrations_dir) is True
-
-    # Check the database changes
-    conn = sqlite3.connect(db_path)
-    cursor = conn.execute("SELECT version FROM _meta")
-    assert cursor.fetchone()[0] == 2
-
-    cursor = conn.execute("SELECT name FROM users ORDER BY id")
-    names = [row[0] for row in cursor.fetchall()]
-    assert names == ["Charlie", "Dave"]
-
-    conn.close()
+def write_migrations(directory, files):
+    directory.mkdir(exist_ok=True)
+    for name, content in files.items(): (directory/name).write_text(content)
 
 
-def test_run_migrations_failed(tmp_path):
-    """Test handling of failed migrations."""
-    migrations_dir = tmp_path / "migrations"
-    migrations_dir.mkdir()
-
-    db_path = tmp_path / "test.db"
-    # Create empty database file
-    conn = sqlite3.connect(db_path)
-    conn.close()
-
-    # Initialize the database with _meta table
-    _ensure_meta_table(db_path)
-
-    # Create a valid migration
-    with open(migrations_dir / "0001-create-table.sql", "w") as f:
-        f.write("""
-        CREATE TABLE users (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL
-        );
-        """)
-
-    # Create an invalid migration (syntax error)
-    with open(migrations_dir / "0002-invalid.sql", "w") as f:
-        f.write("""
-        INSERT INTO users (name VALUES ('Alice');  -- Missing closing parenthesis
-        """)
-
-    # Run migrations - should fail
-    assert run_migrations(db_path, migrations_dir) is False
-
-    # Check the database version is still 1
-    conn = sqlite3.connect(db_path)
-    cursor = conn.execute("SELECT version FROM _meta")
-    assert cursor.fetchone()[0] == 1
-
-    conn.close()
+def cli(command, *args):
+    return subprocess.run([f'fastmigrate_{command}', *map(str, args)], capture_output=True, text=True, timeout=30)
 
 
-def test_testsuite_a(tmp_path):
-    """Test running migrations from testsuite_a."""
-    # Get the path to the migrations directory
-    migrations_dir = Path(__file__).parent / "test_migrations" / "migrations"
+@pytest.fixture
+def migration_project(tmp_path):
+    db, migrations = tmp_path/'test.db', tmp_path/'migrations'
+    create_db(db)
+    migrations.mkdir()
+    return db, migrations
 
-    db_path = tmp_path / "test.db"
-    # Create empty database file
-    conn = sqlite3.connect(db_path)
-    conn.close()
 
-    # Initialize the database with _meta table
-    _ensure_meta_table(str(db_path))
+def test_migration_journey(migration_project):
+    db, migrations = migration_project
+    with pytest.raises(sqlite3.IntegrityError): query(db, 'INSERT INTO _meta VALUES (2, 99)')
 
-    # Run migrations
-    assert run_migrations(str(db_path), str(migrations_dir)) is True
+    # Create scripts out of order. Non-idempotent inserts expose repeats and wrong ordering.
+    write_migrations(migrations, {
+        '0010-shell.sh': f'''{shlex.quote(sys.executable)} - "$1" <<'PY'
+import sqlite3, sys
+with sqlite3.connect(sys.argv[1]) as conn: conn.execute('INSERT INTO events (version) VALUES (10)')
+PY
+''',
+        '0001-create.sql': 'CREATE TABLE events (id INTEGER PRIMARY KEY, version INTEGER, note TEXT); INSERT INTO events (version) VALUES (1);',
+        '0003-python.py': '''import sqlite3, sys
+with sqlite3.connect(sys.argv[1]) as conn: conn.execute('INSERT INTO events (version) VALUES (3)')
+''',
+        '0002-ignored.txt': 'not a migration',
+    })
+    result = cli('run_migrations', '--db', db, '--migrations', migrations)
+    assert result.returncode == 0, result.stderr
+    assert get_db_version(db) == 10
+    assert query(db, 'SELECT version FROM events ORDER BY id') == [(1,), (3,), (10,)]
+    assert run_migrations(db, migrations)
+    assert query(db, 'SELECT version FROM events ORDER BY id') == [(1,), (3,), (10,)]
 
-    # Check the database changes
-    conn = sqlite3.connect(db_path)
+    # A failed SQL migration may leave changes, but must not advance the version or run later scripts.
+    write_migrations(migrations, {
+        '0005-old.sql': 'this would fail if an already-passed version were executed',
+        '0015-failing.sql': 'INSERT INTO events (version) VALUES (15); INSERT INTO missing VALUES (1);',
+        '0020-later.sql': 'INSERT INTO events (version) VALUES (20);',
+    })
+    assert not run_migrations(db, migrations)
+    assert get_db_version(db) == 10
+    assert query(db, 'SELECT version FROM events ORDER BY id') == [(1,), (3,), (10,), (15,)]
+    (migrations/'0015-failing.sql').write_text("UPDATE events SET note='recovered' WHERE version=15;")
+    assert run_migrations(db, migrations)
+    assert create_db(db) == 20
+    assert query(db, 'SELECT version FROM events ORDER BY id') == [(1,), (3,), (10,), (15,), (20,)]
+    assert query(db, 'SELECT note FROM events WHERE version=15') == [('recovered',)]
 
-    # Version should be 4 (all migrations applied)
-    cursor = conn.execute("SELECT version FROM _meta")
-    assert cursor.fetchone()[0] == 4
 
-    # Verify users table
-    cursor = conn.execute("SELECT COUNT(*) FROM users")
-    assert cursor.fetchone()[0] == 3
+@pytest.mark.parametrize('extension, failure', [('py', 'import sys; sys.exit(7)'), ('sh', 'exit 7')])
+def test_external_script_failure(migration_project, extension, failure):
+    db, migrations = migration_project
+    write_migrations(migrations, {
+        '0001-create.sql': 'CREATE TABLE events (id INTEGER); INSERT INTO events VALUES (1);',
+        f'0002-fail.{extension}': failure,
+        '0003-later.sql': 'INSERT INTO events VALUES (3);',
+    })
+    assert cli('run_migrations', '--db', db, '--migrations', migrations).returncode != 0
+    assert get_db_version(db) == 1
+    assert query(db, 'SELECT id FROM events') == [(1,)]
 
-    # Verify posts table
-    cursor = conn.execute("SELECT COUNT(*) FROM posts")
-    assert cursor.fetchone()[0] == 3
 
-    # Verify tags table
-    cursor = conn.execute("SELECT COUNT(*) FROM tags")
-    assert cursor.fetchone()[0] == 3
+def test_enrollment_backup_and_config_precedence(tmp_path):
+    db, migrations, config = tmp_path/'existing.db', tmp_path/'migrations', tmp_path/'config.ini'
+    query(db, 'CREATE TABLE events (value TEXT)')
+    query(db, "INSERT INTO events VALUES ('original')")
+    write_migrations(migrations, {'0002-update.sql': "UPDATE events SET value='updated';"})
+    with pytest.raises(sqlite3.Error): create_db(db)
+    assert not run_migrations(db, migrations)
+    assert query(db, 'SELECT value FROM events') == [('original',)]
+    assert query(db, "SELECT name FROM sqlite_master WHERE name='_meta'") == []
 
-    # Verify post_tags table
-    cursor = conn.execute("SELECT COUNT(*) FROM post_tags")
-    assert cursor.fetchone()[0] == 5
+    config.write_text(f'[paths]\ndb={db}\nmigrations={migrations}\n')
+    result = cli('enroll_db', '--config_path', config)
+    assert result.returncode == 0, result.stderr
+    assert get_db_version(db) == 1
+    assert query(db, 'SELECT value FROM events') == [('original',)]
+    other_db, other_migrations = tmp_path/'other.db', tmp_path/'other_migrations'
+    create_db(other_db)
+    query(other_db, (migrations/'0001-initialize.sql').read_text())
+    assert cli('backup_db', '--config_path', config).returncode == 0
+    backup, = tmp_path.glob('existing.db.*.backup')
 
-    conn.close()
+    # Explicit CLI paths must win over a config pointing at a different database and migration directory.
+    write_migrations(other_migrations, {'0009-wrong.sql': 'invalid SQL'})
+    config.write_text(f'[paths]\ndb={other_db}\nmigrations={other_migrations}\n')
+    result = cli('run_migrations', '--config_path', config, '--db', db, '--migrations', migrations)
+    assert result.returncode == 0, result.stderr
+    assert get_db_version(db) == 2
+    assert get_db_version(other_db) == 0
+    assert query(db, 'SELECT value FROM events') == [('updated',)]
+    assert get_db_version(backup) == 1
+    assert query(backup, 'SELECT value FROM events') == [('original',)]
+    assert cli('enroll_db', '--db', db, '--migrations', migrations).returncode != 0
+    assert get_db_version(db) == 2
+
+
+def test_duplicate_versions_rejected(migration_project):
+    _, migrations = migration_project
+    write_migrations(migrations, {'0001-first.sql': '', '0001-second.py': ''})
+    with pytest.raises(ValueError, match='Duplicate migration version'): get_migration_scripts(migrations)

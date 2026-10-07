@@ -1,120 +1,27 @@
-import pytest
-import sqlite3
-import os
+"Backup safety against collisions and actual SQLite errors."
+
 from datetime import datetime
-from pathlib import Path
+from unittest.mock import patch
 
-from fastmigrate.core import create_db_backup
+from fastmigrate.core import create_db, create_db_backup
 
-# this test used pytest-mock which automatically cleans up the mock patches during test teardown
-# https://pytest-mock.readthedocs.io/en/latest/
-
-
-@pytest.fixture
-def temp_db(tmp_path):
-    """Provides a test database path and temp directory path."""
-    db_path = tmp_path / "test.db"
-    conn = sqlite3.connect(db_path)
-    conn.execute("CREATE TABLE test (id INTEGER PRIMARY KEY, value TEXT)")
-    conn.execute("INSERT INTO test (value) VALUES ('original data')")
-    conn.commit()
-    conn.close()
-    yield db_path, tmp_path
+from test_migrations import query
 
 
-def test_create_db_backup_success(temp_db):
-    """Test successful creation of a database backup."""
-    db_path, _ = temp_db  # Unpack the fixture result
+def test_backup_safety(tmp_path):
+    db = tmp_path/'test.db'
+    create_db(db)
+    query(db, 'CREATE TABLE events (id INTEGER)')
+    query(db, 'INSERT INTO events VALUES (1)')
+    # Only freeze the clock: backups and collision protection use real SQLite/filesystem operations.
+    with patch('fastmigrate.core.datetime') as clock:
+        clock.now.return_value = datetime(2026, 1, 1)
+        backup = create_db_backup(db)
+        query(db, 'INSERT INTO events VALUES (2)')
+        assert create_db_backup(db) is None
+    assert query(backup, 'SELECT id FROM events') == [(1,)]
 
-    backup_path = create_db_backup(db_path)
-
-    assert backup_path is not None
-    assert os.path.exists(backup_path)
-    assert str(backup_path).startswith(str(db_path))
-    assert ".backup" in os.path.basename(backup_path)  # Check basename for .backup
-
-    # Verify the backup contains the same data
-    conn_backup = sqlite3.connect(backup_path)
-    cursor = conn_backup.execute("SELECT value FROM test")
-    assert cursor.fetchone()[0] == "original data"
-    conn_backup.close()
-
-
-def test_create_db_backup_db_not_exists(temp_db):
-    """Test backup attempt when the source database does not exist."""
-    _, tmp_path = temp_db
-    non_existent_path = tmp_path / "nonexistent.db"
-
-    result = create_db_backup(non_existent_path)
-
-    assert result is None
-
-
-def test_create_db_backup_already_exists(temp_db, mocker):
-    """Test backup attempt when the target backup file already exists."""
-    db_path, _ = temp_db
-
-    fixed_timestamp = "20230101_120000"
-    expected_backup_path = f"{db_path}.{fixed_timestamp}.backup"
-
-    # Create the dummy existing backup file
-    with open(expected_backup_path, "w") as f:
-        f.write("dummy content")
-
-    # Mock datetime using pytest-mock
-    mock_dt = mocker.patch("fastmigrate.core.datetime")
-    mock_dt.now.return_value = datetime.strptime(fixed_timestamp, "%Y%m%d_%H%M%S")
-    mock_dt.strptime = datetime.strptime
-
-    result = create_db_backup(db_path)
-
-    assert result is None
-    assert os.path.exists(expected_backup_path)  # Ensure the original dummy file wasn't removed
-
-
-def test_create_db_backup_removes_file_on_error(temp_db, mocker):
-    """Test that if an error occurs after backup, the backup file is removed."""
-    import sqlite3
-
-    db_path, _ = temp_db
-
-    # Mock datetime and predict path
-    fixed_timestamp = "20230101_000000"
-    mock_dt = mocker.patch("fastmigrate.core.datetime")
-    mock_dt.now.return_value = datetime.strptime(fixed_timestamp, "%Y%m%d_%H%M%S")
-    mock_dt.strptime = datetime.strptime
-    predicted_backup_path = f"{db_path}.{fixed_timestamp}.backup"
-
-    # Patch connect: source is mocked, backup is real
-    real_connect = sqlite3.connect
-
-    def mock_connect(db_file_path):
-        if Path(db_file_path) == Path(db_path):
-            # Return the mock source connection
-            return mock_conn
-        # Allow real connection for the backup file
-        return real_connect(db_file_path)
-
-    # Define backup method: do real backup, then raise error
-    def backup_and_fail(target_conn, *args, **kwargs):
-        # Actually create the backup file
-        real_conn = real_connect(db_path)
-        try:
-            real_conn.backup(target_conn)
-        finally:
-            real_conn.close()
-        # Now simulate error during the backup
-        raise Exception("Simulated error during the backup")
-
-    mock_conn = mocker.MagicMock()
-    mock_conn.backup.side_effect = backup_and_fail
-
-    mocker.patch("fastmigrate.core.sqlite3.connect", side_effect=mock_connect)
-
-    result = create_db_backup(db_path)
-
-    assert result is None
-    # Ensure backup was actually called
-    mock_conn.backup.assert_called_once()
-    # Assert that the backup file does not exist after the failed operation
-    assert not os.path.exists(predicted_backup_path)
+    corrupt = tmp_path/'corrupt.db'
+    corrupt.write_bytes(b'not a database')
+    assert create_db_backup(corrupt) is None
+    assert not list(tmp_path.glob('corrupt.db.*.backup'))
